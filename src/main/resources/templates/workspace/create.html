@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>새 워크스페이스 만들기</title>
+    <style>
+        .form-group { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+
+<h2>새로운 협업 공간 만들기</h2>
+
+<form th:action="@{/workspaces/create}" method="post">
+    <div class="form-group">
+        <label th:for="workspaceName">워크스페이스 이름</label><br>
+        <input type="text" name="workspaceName" id="workspaceName" placeholder="예: 캡스톤 디자인 A팀" style="width: 300px; padding: 5px;" required>
+    </div>
+
+    <div class="form-group">
+        <label th:for="description">설명</label><br>
+        <textarea name="description" id="description" rows="4" placeholder="어떤 목적으로 사용하는 공간인지 적어주세요." style="width: 300px; padding: 5px;"></textarea>
+    </div>
+
+    <button type="submit" style="padding: 10px 20px;">생성하기</button>
+    <button type="button" th:onclick="|location.href='@{/workspaces}'|" style="padding: 10px 20px; background-color: #eee; border: 1px solid #ccc;">취소</button>
+</form>
+
+</body>
+</html>

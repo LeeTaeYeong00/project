@@ -27,6 +27,7 @@ public class WorkspaceService {
         Workspace workspace = Workspace.builder()
                                     .workspaceName(workspaceName)
                                     .description(description)
+                                    .createdAt(java.time.LocalDateTime.now())
                                     .build();
         workspaceRepository.save(workspace);
 
