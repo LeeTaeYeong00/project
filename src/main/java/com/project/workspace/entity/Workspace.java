@@ -1,5 +1,7 @@
 package com.project.workspace.entity;
 
+import java.time.LocalDateTime;
+
 import com.project.user.entity.User;
 
 import jakarta.persistence.Column;
@@ -31,9 +33,14 @@ public class Workspace {
     @Column(nullable = false)
     private String workspaceName;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id") // user_id(FK)
     private User owner;
     
-
 }
