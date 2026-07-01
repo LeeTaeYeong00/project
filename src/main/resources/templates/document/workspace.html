@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>노션 스타일 협업 공간</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; height: 100vh; color: #37352f; }
+        
+        /* 1. 왼쪽 사이드바 디자인 */
+        .sidebar { 
+            width: 260px; 
+            background-color: #f7f7f5; 
+            border-right: 1px solid #edece9; 
+            display: flex; 
+            flex-direction: column; 
+            padding: 20px 10px; 
+            transition: all 0.3s ease; /* 부드러운 움직임 효과 */
+            position: relative;
+        }
+
+        /* 사이드바가 닫혔을 때의 상태 */
+        .sidebar.collapsed {
+            transform: translateX(-260px); /* 사이드바를 왼쪽으로 260px만큼 통째로 밀어버림 */
+            margin-right: -260px; /* 밀려난 만큼 메인 콘텐츠가 공간을 채우도록 당김 */
+        }
+
+        /* 사이드바를 열고 닫을 토글 버튼 스타일 */
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: -12px; /* 사이드바 오른쪽 경계선에 반쯤 걸치게 배치 */
+            width: 24px;
+            height: 24px;
+            background-color: #ffffff;
+            border: 1px solid #dfdeda;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+            z-index: 1000; /* ★ 중요: 사이드바가 닫혀도 잘리지 않고 메인 화면 위에 둥둥 뜨게 함 */
+            transition: transform 0.3s ease; /* 화살표 회전 애니메이션 */
+        }
+
+        .home-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px; /* 이모지와 텍스트 사이 간격 */
+            font-size: 13px;
+            font-weight: 500;
+            color: #6b6a65;
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            align-self: flex-start; /* 버튼 크기가 텍스트만큼만 딱 줄어들게 함 */
+            margin-bottom: 20px;
+            transition: background-color 0.2s ease;
+        }
+
+        .home-btn:hover {
+            background-color: #efeee0; /* 마우스를 올렸을 때만 은은하게 배경 표시 */
+            color: #37352f;
+        }
+        /* 새 문서 만들기 폼 */
+        .create-form { margin-bottom: 20px; padding: 0 8px; }
+        .create-input { width: 100%; padding: 6px 10px; border: 1px solid #dfdeda; border-radius: 4px; font-size: 13px; background-color: #fff; margin-bottom: 5px; }
+        .create-btn { width: 100%; background-color: #2383e2; color: white; border: none; padding: 6px; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: 500; }
+        .create-btn:hover { background-color: #1a6cb9; }
+        
+        /* 문서 목록 리스트 */
+        .doc-list { flex: 1; overflow-y: auto; list-style: none; }
+        .doc-item { display: flex; align-items: center; padding: 8px; border-radius: 4px; cursor: pointer; text-decoration: none; color: inherit; font-size: 14px; margin-bottom: 2px; }
+        .doc-item:hover { background-color: #efeee0; }
+        .doc-item.active { background-color: #edece9; font-weight: 500; }
+        .doc-icon { margin-right: 8px; font-size: 16px; }
+
+        /* 2. 오른쪽 메인 콘텐츠 영역 */
+        .main-content { flex: 1; display: flex; flex-direction: column; background-color: #ffffff; padding: 40px 60px; overflow-y: auto; }
+        
+        /* 안내문 화면 (선택된 문서가 없을 때) */
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #91908c; text-align: center; }
+        .empty-state h2 { font-size: 22px; font-weight: 500; margin-bottom: 10px; color: #37352f; }
+        
+        /* 노션 스타일 텍스트 편집기 */
+        .editor-container { max-width: 720px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; height: 100%; }
+        .editor-title { font-size: 40px; font-weight: 700; border: none; outline: none; width: 100%; margin-bottom: 10px; color: #37352f; }
+        .editor-meta { font-size: 12px; color: #91908c; margin-bottom: 30px; }
+        .editor-textarea { flex: 1; border: none; outline: none; width: 100%; font-size: 16px; line-height: 1.5; resize: none; color: #37352f; }
+        
+        /* 저장 버튼바 */
+        .save-bar { text-align: right; padding-top: 20px; border-top: 1px solid #efeee0; }
+        .save-btn { background-color: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-size: 14px; cursor: pointer; font-weight: 500; }
+        .save-btn:hover { background-color: #27ae60; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar">
+        <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
+        <a th:href="@{/workspaces}" class="home-btn">
+            <span style="font-size: 16px;">🏠</span>
+            <span>홈</span>
+        </a>
+        <h3>새 문서</h3>
+        <div class="create-form">
+            <form th:action="@{/workspaces/{wsId}/documents/create(wsId=${workspaceId})}" method="post">
+                <input type="text" name="title" class="create-input" placeholder="새 문서 제목..." required>
+                <button type="submit" class="create-btn">+ 문서 추가</button>
+            </form>
+        </div>
+
+        <h3>문서 목록</h3>
+        <ul class="doc-list">
+            <li th:if="${#lists.isEmpty(documents)}" style="padding: 8px; font-size: 13px; color: #91908c;">
+                생성된 문서가 없습니다.
+            </li>
+            <li th:unless="${#lists.isEmpty(documents)}" th:each="doc : ${documents}">
+                <a th:href="@{/workspaces/{wsId}/documents(wsId=${workspaceId}, docId=${doc.documentId})}" 
+                   th:classappend="${selectedDocument != null && selectedDocument.documentId == doc.documentId} ? 'active' : ''"
+                   class="doc-item">
+                    <span class="doc-icon">📄</span>
+                    <span th:text="${doc.title}">문서 제목</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    
+
+    <div class="main-content">
+        
+        <div th:if="${selectedDocument == null}" class="empty-state">
+            <h2>📝 나만의 지식 저장소</h2>
+            <p>왼쪽 사이드바에서 문서를 선택하거나 새 문서를 추가하여 협업을 시작해 보세요!</p>
+        </div>
+
+        <div th:unless="${selectedDocument == null}" class="editor-container">
+            <h1 class="editor-title" th:text="${selectedDocument.title}">문서 제목</h1>
+            
+            <div class="editor-meta">
+                최종 수정: <span th:text="${#temporals.format(selectedDocument.updatedAt, 'yyyy-MM-dd HH:mm:ss')}">수정일</span>
+            </div>
+
+            <form th:action="@{/workspaces/{wsId}/documents/update-content(wsId=${workspaceId})}" method="post" style="display:flex; flex-direction:column; flex:1;">
+                <input type="hidden" name="docId" th:value="${selectedDocument.documentId}">
+                
+                <textarea name="content" class="editor-textarea" th:text="${selectedDocument.content}" placeholder="여기에 자유롭게 내용을 입력하세요..."></textarea>
+                
+                <div class="save-bar">
+                    <button type="submit" class="save-btn">변경사항 저장</button>
+                </div>
+            </form>
+        </div>
+        
+    </div>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleBtn = document.getElementById('toggleBtn');
+            
+            // 클래스 토글 (CSS의 transform 애니메이션이 발동함)
+            sidebar.classList.toggle('collapsed');
+            
+            // 화살표 방향 스위칭
+            if (sidebar.classList.contains('collapsed')) {
+                toggleBtn.innerText = '▶';
+            } else {
+                toggleBtn.innerText = '◀';
+            }
+        }
+    </script>
+</body>
+</html>
