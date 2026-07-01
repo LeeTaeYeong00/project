@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>노션 스타일 협업 공간</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; height: 100vh; color: #37352f; }
@@ -139,36 +141,121 @@
 
         <div th:unless="${selectedDocument == null}" class="editor-container">
             <h1 class="editor-title" th:text="${selectedDocument.title}">문서 제목</h1>
-            
             <div class="editor-meta">
                 최종 수정: <span th:text="${#temporals.format(selectedDocument.updatedAt, 'yyyy-MM-dd HH:mm:ss')}">수정일</span>
             </div>
 
-            <form th:action="@{/workspaces/{wsId}/documents/update-content(wsId=${workspaceId})}" method="post" style="display:flex; flex-direction:column; flex:1;">
-                <input type="hidden" name="docId" th:value="${selectedDocument.documentId}">
-                
+            <div style="display:flex; flex-direction:column; flex:1;">
                 <textarea name="content" class="editor-textarea" th:text="${selectedDocument.content}" placeholder="여기에 자유롭게 내용을 입력하세요..."></textarea>
                 
-                <div class="save-bar">
-                    <button type="submit" class="save-btn">변경사항 저장</button>
+                <div class="save-bar" style="color: #91908c; font-size: 13px;">
+                    🟢 실시간으로 안전하게 동기화 중...
                 </div>
-            </form>
+            </div>
         </div>
         
     </div>
-    <script>
+
+    <script th:inline="javascript">
+        // Thymeleaf 변수를 자바스크립트 변수로 안전하게 가져옴
+        /*<![CDATA[*/
+        const currentDocId = /*[[${selectedDocument != null ? selectedDocument.documentId : null}]]*/ null;
+        /*]]>*/
+
+        let stompClient = null;
+
+        // 1. 문서가 열려있을 때만 웹소켓 연결 시작
+        if (currentDocId) {
+            connectWebSocket(currentDocId);
+            initTypingEvent(currentDocId);
+        }
+
+        function connectWebSocket(docId) {
+            // WebSocketConfig에서 설정한 엔드포인트(/ws-connect)로 커넥션 연결
+            const socket = new SockJS('/ws-connect');
+            stompClient = Stomp.over(socket);
+
+            // 콘솔에 나오는 복잡한 디버그 로그 숨기기 (깔끔하게 무음 처리)
+            //stompClient.debug = null;
+
+            stompClient.connect({}, function (frame) {
+                console.log("웹소켓 연결 성공. 프레임 정보 : ", frame);
+                // 연결 성공 시, 해당 문서 주소(/topic/documents/번호)를 구독(감시) 시작!
+                stompClient.subscribe('/topic/documents/' + docId, function (response) {
+                    const message = JSON.parse(response.body);
+                    
+                    // 내가 타이핑한 게 아니라 "남이 바꾼 내용"이 날아왔을 때만 내 에디터 본문을 갈아끼움
+                    const textarea = document.querySelector('.editor-textarea');
+                    if (textarea && textarea.value !== message.content) {
+                        textarea.value = message.content;
+                    }
+                });
+            }, function(error){
+                console.log("웹소켓 연결 실패 : ", error);
+            });
+        }
+
+        // 2. 에디터에 타이핑할 때마다 실시간으로 서버에 데이터 전송
+        function initTypingEvent(docId) {
+            const textarea = document.querySelector('.editor-textarea');
+            if (!textarea) return;
+
+            textarea.addEventListener('input', function (e) {
+                const currentContent = e.target.value;
+
+                // 웹소켓이 연결된 상태라면 서버의 @MessageMapping 주소로 전송
+                if (stompClient && stompClient.connected) {
+                    stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
+                        content: currentContent
+                    }));
+                }
+            });
+        }
+
+        // --- 기존에 작성했던 사이드바 토글 함수 (유지) ---
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('toggleBtn');
-            
-            // 클래스 토글 (CSS의 transform 애니메이션이 발동함)
             sidebar.classList.toggle('collapsed');
-            
-            // 화살표 방향 스위칭
             if (sidebar.classList.contains('collapsed')) {
                 toggleBtn.innerText = '▶';
             } else {
                 toggleBtn.innerText = '◀';
+            }
+        }
+
+        let typingTimeout = null;
+
+        function initTypingEvent(docId){
+            const textarea = document.querySelector('.editor-textarea');
+            if(!textarea) return;
+
+            textarea.addEventListener('input', function(e){
+                const currentContent = e.target.value;
+
+                clearTimeout(typingTimeout);
+
+                typingTimeout = setTimeout(function(){
+                    sendToServer(docId, currentContent, "⏳ 일정 시간 입력 없음으로 자동 저장");
+                }, 1000);
+            });
+
+            textarea.addEventListener('keydown', function(e){
+                if(e.key === 'Enter' && !e.isComposing){
+                    clearTimeout(typingTimeout);
+
+                    const currentContent = e.target.value;
+                    sendToServer(docId, currentContent, "🚀 엔터 입력으로 즉시 저장")
+                }
+            });
+        }
+
+        function sendToServer(docId, content, messageLog){
+            if(stompClient && stompClient.connected){
+                stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
+                    content: content
+                }));
+                console.log(messageLog);
             }
         }
     </script>
