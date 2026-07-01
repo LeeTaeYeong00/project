@@ -38,9 +38,4 @@ public class Workspace {
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id") // user_id(FK)
-    private User owner;
-    
 }
