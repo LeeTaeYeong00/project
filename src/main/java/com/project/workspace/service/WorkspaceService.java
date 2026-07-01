@@ -41,6 +41,15 @@ public class WorkspaceService {
         return workspace.getWorkspaceId();
     }
 
+    @Transactional
+    public void deleteWorkspace(Long workspaceId, User loginUser){
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+                                                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 워크스페이스 입니다"));
+        
+        workspaceRepository.delete(workspace);
+    }
+
+
     public List<Workspace> getMyWorkspaces(Long userId){
         List<WorkspaceMember> workspaceMembers = workspaceMemberRepository.findByUser_UserId(userId);
 

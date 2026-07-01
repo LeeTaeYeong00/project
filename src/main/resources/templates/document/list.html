@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>문서 관리 공간</title>
+    <style>
+        .document-item { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { margin-bottom: 20px; display: inline-block; color: #555; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+<a th:href="@{/workspaces}" class="back-btn">◁ 워크스페이스 대시보드로 돌아가기</a>
+
+<h2>📄 문서 협업 공간</h2>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+    <h4 style="margin-top: 0;">+ 새 문서 만들기</h4>
+    <form th:action="@{/workspaces/{wsId}/documents/create(wsId=${workspaceId})}" method="post">
+        <input type="text" name="title" placeholder="문서 제목을 입력하세요" style="width: 250px; padding: 5px;" required>
+        <button type="submit" style="padding: 5px 10px;">생성</button>
+    </form>
+</div>
+
+<h3>문서 목록</h3>
+<div th:if="${#lists.isEmpty(documents)}">
+    <p style="color: #888;">아직 생성된 문서가 없습니다. 첫 문서를 만들어보세요!</p>
+</div>
+
+<div th:unless="${#lists.isEmpty(documents)}">
+    <div th:each="doc : ${documents}" class="document-item">
+        <div>
+            <strong th:text="${doc.title}" style="font-size: 1.1em; color: #333;">문서 제목</strong>
+            <span style="font-size: 0.8em; color: #999; margin-left: 10px;" 
+                  th:text="'최종 수정: ' + ${#temporals.format(doc.updatedAt, 'yyyy-MM-dd HH:mm')}">수정일시</span>
+        </div>
+        <div>
+            <button th:onclick="|location.href='@{/workspaces/' + ${workspaceId} + '/documents/' + ${doc.documentId}}'|" style="padding: 5px 10px;">
+                열기
+            </button>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

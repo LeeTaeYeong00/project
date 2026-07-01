@@ -10,31 +10,44 @@
 </head>
 <body>
 
-<div class="header">
-    <h2><span th:text="${username}">사용자</span>님의 대시보드</h2>
-    <form th:action="@{/users/logout}" method="post">
-        <button type="submit">로그아웃</button>
-    </form>
-</div>
-
-<h3>나의 워크스페이스 목록</h3>
-<button th:onclick="|location.href='@{/workspaces/create}'|" style="padding: 10px 15px; margin-bottom: 20px;">
-    + 새 워크스페이스 만들기
-</button>
-
-<div th:if="${#lists.isEmpty(workspaces)}">
-    <p>참여 중인 워크스페이스가 없습니다. 새 공간을 만들어보세요!</p>
-</div>
-
-<div th:unless="${#lists.isEmpty(workspaces)}">
-    <div th:each="ws : ${workspaces}" class="workspace-card">
-        <h4 th:text="${ws.workspaceName}">워크스페이스 이름</h4>
-        <p th:text="${ws.description}">워크스페이스 설명</p>
-        <button th:onclick="|location.href='@{/workspaces/' + ${ws.workspaceId} + '/documents'}'|">
-            입장하기
-        </button>
+    <div class="header">
+        <h2><span th:text="${username}">사용자</span>님의 대시보드</h2>
+        <form th:action="@{/users/logout}" method="post">
+            <button type="submit">로그아웃</button>
+        </form>
     </div>
-</div>
 
+    <h3>나의 워크스페이스 목록</h3>
+    <button th:onclick="|location.href='@{/workspaces/create}'|" style="padding: 10px 15px; margin-bottom: 20px;">
+        + 새 워크스페이스 만들기
+    </button>
+
+    <div th:if="${#lists.isEmpty(workspaces)}">
+        <p>참여 중인 워크스페이스가 없습니다. 새 공간을 만들어보세요!</p>
+    </div>
+
+    <div th:unless="${#lists.isEmpty(workspaces)}">
+        <div th:each="ws : ${workspaces}" class="workspace-card" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px;">
+            
+            <h4 th:text="${ws.workspaceName}" style="margin: 0 0 5px 0;">워크스페이스 이름</h4>
+            <p th:text="${ws.description}" style="margin: 0 0 15px 0; color: #666;">워크스페이스 설명</p>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                
+                <button th:onclick="|location.href='@{/workspaces/{id}/documents(id=${ws.workspaceId})}'|" style="padding: 6px 15px; cursor: pointer;">
+                    입장하기
+                </button>
+
+                <form th:action="@{/workspaces/{id}/delete(id=${ws.workspaceId})}" method="post" style="margin: 0;"
+                    onsubmit="return confirm('정말 이 워크스페이스를 삭제하시겠습니까? 내부 문서와 데이터가 모두 사라집니다.');">
+                    <button type="submit" style="background-color: #ff4d4d; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                        삭제하기
+                    </button>
+                </form>
+                
+            </div>
+
+        </div>
+    </div>
 </body>
 </html>
