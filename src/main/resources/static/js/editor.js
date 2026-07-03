@@ -60,7 +60,7 @@ function connectWebSocket(docId) {
                             data-block-id="${message.blockId}" 
                             data-block-type="${message.blockType || 'TEXT'}" 
                             data-sequence-order="${message.sequenceOrder}"
-                            placeholder="명령어 사용은 '/' 입력 (준비 중)"></div>
+                            placeholder="명령어 사용은 '/' 입력 (준비 중)">${message.content || ''}</div>
                     </div>
                 `;
 
@@ -255,21 +255,51 @@ function initBlockTypingEvent(docId) {
 
         else if (event.key === 'Enter' && !event.isComposing) {
             event.preventDefault();
-            flushPendingChanges(targetBlock);
 
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return;
+
+            const range = selection.getRangeAt(0);
+            const text = targetBlock.innerText;
+
+            // 📍 커서의 절대적인 위치(글자수 기준 오프셋) 계산
+            const preCaretRange = range.cloneRange();
+            preCaretRange.selectNodeContents(targetBlock);
+            preCaretRange.setEnd(range.endContainer, range.endOffset);
+            const caretOffset = preCaretRange.toString().length;
+
+            // ✂️ 커서 기준으로 앞텍스트와 뒤텍스트 분할
+            const frontText = text.substring(0, caretOffset);
+            const backText = text.substring(caretOffset);
+
+            const blockId = targetBlock.getAttribute('data-block-id');
             const blockType = targetBlock.getAttribute('data-block-type') || 'TEXT';
             const sequenceOrder = targetBlock.getAttribute('data-sequence-order') || '0';
 
-            if (stompClient && stompClient.connected) {
-                const payload = {
+            if (stompClient && stompClient.connected && blockId) {
+                // 1. 현재 블록은 앞텍스트(ex: "123")만 남기도록 업데이트
+                targetBlock.innerText = frontText; 
+                const updatePayload = {
+                    status: "UPDATE",
+                    documentId: parseInt(docId),
+                    blockId: parseInt(blockId),
+                    blockType: blockType,
+                    content: frontText
+                };
+                stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(updatePayload));
+
+                // 2. 다음 블록을 생성하면서 뒤텍스트(ex: "456")를 content에 담아 전송
+                // 백엔드 엔티티 및 DTO에 content 필드가 반영되어 있어야 정상 저장됩니다.
+                const createPayload = {
                     status: "CREATE",
                     documentId: parseInt(docId),
-                    blockType: blockType,
+                    blockType: "TEXT", // 새로 생기는 블록은 보통 일반 본문(TEXT)으로 시작합니다.
                     sequenceOrder: parseInt(sequenceOrder),
-                    content: ""
+                    content: backText 
                 };
-                stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(payload));
-                console.log(`✨ 새 블록 생성 요청 전송 (Order: ${sequenceOrder})`);
+                stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(createPayload));
+                
+                console.log(`✂️ 블록 쪼개기 요청: [${frontText}] / [${backText}]`);
             }
         }
     });
@@ -317,13 +347,35 @@ function toggleSidebar() {
 function toggleBlockMenu(event, blockId) {
     event.stopPropagation(); 
     
+    // 1. 다른 모든 메뉴 일단 닫기
     document.querySelectorAll('.block-menu').forEach(menu => {
         if(menu.id !== 'menu-' + blockId) menu.classList.remove('show');
     });
 
     const currentMenu = document.getElementById('menu-' + blockId);
-    if (currentMenu) {
-        currentMenu.classList.toggle('show');
+    if (!currentMenu) return;
+
+    // 2. 토글 처리
+    const isOpening = !currentMenu.classList.contains('show');
+    
+    if (isOpening) {
+        currentMenu.classList.add('show');
+        document.body.classList.add('menu-active');
+
+        // 💡 [핵심]: 클릭한 버튼의 뷰포트 절대 좌표를 가져옵니다.
+        const rect = event.currentTarget.getBoundingClientRect();
+        
+        // 3. 부모 요소를 탈출시켜 body 기준으로 위치를 고정해버립니다.
+        // 스크롤 위치(window.scrollY/scrollX)까지 더해 가둠을 완벽히 방지합니다.
+        currentMenu.style.position = 'fixed';
+        currentMenu.style.top = (rect.bottom + window.scrollY + 5) + 'px'; // 버튼 바로 아래 5px 여백
+        currentMenu.style.left = (rect.left + window.scrollX) + 'px';
+        
+        // 메뉴판이 화면 밖으로 나가는걸 막기 위해 body 바로 아래로 레이어를 이동시킬 수도 있습니다.
+        document.body.appendChild(currentMenu);
+    } else {
+        currentMenu.classList.remove('show');
+        document.body.classList.remove('menu-active');
     }
 }
 
@@ -354,6 +406,7 @@ document.addEventListener('click', function() {
     document.querySelectorAll('.block-menu').forEach(menu => {
         menu.classList.remove('show');
     });
+    document.body.classList.remove('menu-active');
 });
 
 // 💡 노션 스타일 드래그 앤 드롭 엔진 초기화 함수 (오타 수정 버전)

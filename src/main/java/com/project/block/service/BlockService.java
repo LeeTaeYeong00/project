@@ -56,20 +56,27 @@ public class BlockService {
             }
         }
 
-        Document document = documentRepository.findById(message.getDocumentId()).orElseThrow(() -> new IllegalArgumentException("문서가 존재하지 않습니다."));
+        Document document = documentRepository.findById(message.getDocumentId())
+                .orElseThrow(() -> new IllegalArgumentException("문서가 존재하지 않습니다."));
+
+        // 💡 [수정 1]: 프론트에서 넘어온 뒷부분 텍스트(message.getContent())를 엔티티에 그대로 넣어줍니다.
+        // 만약 null이거나 비어있을 때만 빈 문자열("") 처리를 합니다.
+        String initialContent = (message.getContent() != null) ? message.getContent() : "";
 
         Block newBlock = Block.builder()
                               .document(document)
                               .blockType(message.getBlockType() != null ? message.getBlockType() : BlockType.TEXT)
-                              .content("")
+                              .content(initialContent) // 👈 "" 대신 initialContent 반영
                               .sequenceOrder(targetOrder)
                               .build();
                     
         Block savedBlock = blockRepository.save(newBlock);
 
+        // 프론트엔드로 브로드캐스팅해줄 반환용 DTO 조립
         message.setBlockId(savedBlock.getBlockId());
         message.setSequenceOrder(savedBlock.getSequenceOrder());
-        message.setContent("");
+        
+        message.setContent(savedBlock.getContent()); 
 
         return message;
     }

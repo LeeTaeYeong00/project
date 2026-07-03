@@ -31,10 +31,17 @@ public class DocumentWebSocketController {
             switch (message.getStatus()) {
                 case "CREATE":
                     log.info("🟢 [SWITCH] CREATE 케이스 진입 성공!");
+                    
+                    // 💡 서비스단에서 message.getContent()를 읽어서 
+                    // 새 블록 엔티티의 content에 세팅해 주도록 설계되어 있어야 합니다.
                     BlockMessageDTO createdMessage = blockService.createNewBlock(message);
+                    
+                    // DB에 정상 저장되고 새 블록 ID와 content(뒷부분 텍스트)가 담긴 완벽한 객체를 전달
                     messagingTemplate.convertAndSend("/topic/documents/" + documentId, createdMessage);
                     log.info("📢 [CREATE] 새 블록 생성 브로드캐스팅 완료! BlockID: {}", createdMessage.getBlockId());
-                    break;
+                    
+                    // ❌ 기존 break; 대신 return; 을 사용하여 맨 하단의 공통 브로드캐스트 라인을 건너뛰어야 합니다!
+                    return;
                     
                 case "UPDATE":
                     log.info("🔵 [SWITCH] UPDATE 케이스 진입 성공!");

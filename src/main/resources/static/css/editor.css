@@ -192,3 +192,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
     font-weight: bold;
     color: #91908c;
 }
+
+/* 💡 메뉴판이 열려 있을 때(menu-active), 모든 블록의 마우스 호버 효과를 강제로 잠금 */
+body.menu-active .block-wrapper:hover {
+    background-color: transparent !important; /* 배경색 하이라이트 방지 */
+}
+
+.block-menu {
+    display: none; /* 기본 숨김 */
+    position: fixed !important; /* 자바스크립트가 실시간 제어하므로 fixed 고정 */
+    z-index: 999999 !important; /* 최상위 레이어 보장 */
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 4px;
+    min-width: 130px;
+    pointer-events: auto !important; /* 마우스 이벤트 정상 수신 */
+}
+
+/* 활성화 시 스타일 */
+.block-menu.show {
+    display: block !important;
+}
