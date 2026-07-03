@@ -96,6 +96,46 @@
         .save-bar { text-align: right; padding-top: 20px; border-top: 1px solid #efeee0; }
         .save-btn { background-color: #2ecc71; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-size: 14px; cursor: pointer; font-weight: 500; }
         .save-btn:hover { background-color: #27ae60; }
+    
+        /* 🧱 노션 블록 전용 스타일 가이드 */
+        .editor-block-item {
+            width: 100%;
+            min-height: 24px;
+            padding: 4px 8px;
+            border: 1px solid transparent;
+            outline: none;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #37352f;
+            word-break: break-all;
+            border-radius: 4px;
+        }
+
+        /* 마우스를 올렸을 때 정렬용 은은한 가이드 라인 */
+        .editor-block-item:hover {
+            background-color: #f7f7f5;
+        }
+
+        /* 현재 포커스된 블록 강조 */
+        .editor-block-item:focus {
+            background-color: #ffffff;
+        }
+
+        /* 폰트 크기 다형성 부여 (BlockType 대응) */
+        .editor-block-item.h1 { font-size: 32px; font-weight: 700; margin-top: 16px; margin-bottom: 4px; }
+        .editor-block-item.h2 { font-size: 24px; font-weight: 600; margin-top: 12px; margin-bottom: 3px; }
+        .editor-block-item.h3 { font-size: 20px; font-weight: 600; margin-top: 8px; margin-bottom: 2px; }
+        .editor-block-item.text { font-size: 16px; font-weight: 400; }
+
+        /* 빈 블록일 때 노션처럼 안내 문구(Placeholder) 띄우기 */
+        .editor-block-item:empty::before {
+            content: attr(placeholder);
+            color: #bcbbb5;
+            cursor: text;
+        }
+        .editor-block-item:focus:empty::before {
+            content: "";
+        }
     </style>
 </head>
 <body>
@@ -145,74 +185,218 @@
                 최종 수정: <span th:text="${#temporals.format(selectedDocument.updatedAt, 'yyyy-MM-dd HH:mm:ss')}">수정일</span>
             </div>
 
-            <div style="display:flex; flex-direction:column; flex:1;">
-                <textarea name="content" class="editor-textarea" th:text="${selectedDocument.content}" placeholder="여기에 자유롭게 내용을 입력하세요..."></textarea>
+            <div id="editor-blocks" style="display:flex; flex-direction:column; flex:1; gap: 4px;">
                 
-                <div class="save-bar" style="color: #91908c; font-size: 13px;">
-                    🟢 실시간으로 안전하게 동기화 중...
-                </div>
+                <div th:each="block : ${selectedDocument.blocks}" 
+                    th:id="'block-' + ${block.blockId}"
+                    th:data-block-id="${block.blockId}"
+                    th:data-block-type="${block.blockType}"
+                    th:data-sequence-order="${block.sequenceOrder}"
+                    contenteditable="true"
+                    class="editor-block-item"
+                    th:classappend="${#strings.toLowerCase(block.blockType)}"
+                    th:text="${block.content}"
+                    placeholder="명령어 사용은 '/' 입력 (준비 중)"></div>
+                    
+            </div>
+            
+            <div class="save-bar" style="color: #91908c; font-size: 13px; margin-top: 20px;">
+                🟢 실시간으로 안전하게 동기화 중...
             </div>
         </div>
         
     </div>
 
     <script th:inline="javascript">
-        // Thymeleaf 변수를 자바스크립트 변수로 안전하게 가져옴
         /*<![CDATA[*/
+        // 1. Thymeleaf 변수를 자바스크립트 변수로 안전하게 가져옴
         const currentDocId = /*[[${selectedDocument != null ? selectedDocument.documentId : null}]]*/ null;
         /*]]>*/
 
         let stompClient = null;
+        let typingTimeout = null;
 
-        // 1. 문서가 열려있을 때만 웹소켓 연결 시작
+        // 2. 문서가 열려있을 때만 웹소켓 연결 시작
         if (currentDocId) {
             connectWebSocket(currentDocId);
-            initTypingEvent(currentDocId);
         }
 
+        // ⚡ [구조 정비] 웹소켓 연결 및 블록 단위 구독(Subscribe) 설정
         function connectWebSocket(docId) {
-            // WebSocketConfig에서 설정한 엔드포인트(/ws-connect)로 커넥션 연결
+            // 기존 엔드포인트 주소인 '/ws-connect'를 그대로 유지합니다.
             const socket = new SockJS('/ws-connect');
             stompClient = Stomp.over(socket);
 
-            // 콘솔에 나오는 복잡한 디버그 로그 숨기기 (깔끔하게 무음 처리)
-            //stompClient.debug = null;
+            // 콘솔 로그가 너무 지저분해지는 것을 방지 (디버깅 시 주석 해제)
+            // stompClient.debug = null;
 
             stompClient.connect({}, function (frame) {
                 console.log("웹소켓 연결 성공. 프레임 정보 : ", frame);
-                // 연결 성공 시, 해당 문서 주소(/topic/documents/번호)를 구독(감시) 시작!
+                
+                // 실시간 블록 수신 채널 구독
                 stompClient.subscribe('/topic/documents/' + docId, function (response) {
                     const message = JSON.parse(response.body);
-                    
-                    // 내가 타이핑한 게 아니라 "남이 바꾼 내용"이 날아왔을 때만 내 에디터 본문을 갈아끼움
-                    const textarea = document.querySelector('.editor-textarea');
-                    if (textarea && textarea.value !== message.content) {
-                        textarea.value = message.content;
+
+                    // 내가 바꾼 게 아니라 "남이 바꾼 내용"이 날아왔을 때 블록 업데이트
+                    if (message.status === "UPDATE") {
+                        const targetBlock = document.getElementById('block-' + message.blockId);
+                        
+                        // 내 화면에 존재하는 블록이고, 현재 내가 입력 중인 블록이 아닐 때만 텍스트 동기화
+                        if (targetBlock && document.activeElement !== targetBlock) {
+                            targetBlock.innerText = message.content;
+                        }
+                    } else if (message.status === "CREATE") { // 2) ✨ 새 블록 생성 (CREATE) 수신 처리 완벽 교정 버전
+                        // 이미 화면에 존재하는 블록인지 체크 (중복 생성 방지)
+                        if (document.getElementById('block-' + message.blockId)) return;
+
+                        // 🛠️ 오타 완벽 박멸: 백틱 안에서는 깔끔하게 ${message.blockId}로 주입해야 합니다.
+                        const newBlockHtml = `
+                            <div class="editor-block-item" 
+                                id="block-${message.blockId}" 
+                                contenteditable="true" 
+                                data-block-id="${message.blockId}" 
+                                data-block-type="${message.blockType}" 
+                                data-sequence-order="${message.sequenceOrder}"
+                                placeholder="명령어 사용은 '/' 입력 (준비 중)"></div>
+                        `;
+
+                        const editorContainer = document.getElementById('editor-blocks');
+                        const currentActive = document.activeElement;
+
+                        // 현재 내가 타이핑 중이던 블록이 에디터 블록인지 확인
+                        if (currentActive && currentActive.classList.contains('editor-block-item')) {
+                            // 내 화면에서 엔터를 쳐서 생성된 경우 -> 현재 줄 바로 뒤에 깨끗하게 삽입
+                            currentActive.insertAdjacentHTML('afterend', newBlockHtml);
+                        } else {
+                            // 다른 사람이 추가한 경우 -> 순서(sequenceOrder)에 맞춰서 알맞은 위치에 배치
+                            const items = Array.from(editorContainer.querySelectorAll('.editor-block-item'));
+                            let inserted = false;
+                            
+                            for (let item of items) {
+                                if (parseInt(item.getAttribute('data-sequence-order')) > message.sequenceOrder) {
+                                    item.insertAdjacentHTML('beforebegin', newBlockHtml);
+                                    inserted = true;
+                                    break;
+                                }
+                            }
+                            if (!inserted) {
+                                editorContainer.insertAdjacentHTML('beforeend', newBlockHtml);
+                            }
+                        }
+
+                        // 🎯 커서 이동 강제 및 확실한 포커싱
+                        if (currentActive && currentActive.classList.contains('editor-block-item')) {
+                            // 이제 고유한 숫자로 ID가 생성되므로 정확하게 엘리먼트를 찾아냅니다.
+                            const newlyCreatedBlock = document.getElementById('block-' + message.blockId);
+                            
+                            if (newlyCreatedBlock) {
+                                newlyCreatedBlock.focus();
+                                try {
+                                    const range = document.createRange();
+                                    const selection = window.getSelection();
+                                    
+                                    // 엘리먼트 내부 콘텐츠 기준으로 커서 지정
+                                    range.selectNodeContents(newlyCreatedBlock);
+                                    range.collapse(true); // 커서를 시작점으로 모음 (깜빡이 활성화)
+                                    
+                                    selection.removeAllRanges();
+                                    selection.addRange(range);
+                                } catch (e) {
+                                    console.error("커서 강제 제어 중 에러:", e);
+                                }
+                            }
+                        }
                     }
                 });
+
+                // 소켓 연결 성공 후 노션 스타일 블록 타이핑 감지 시작
+                initBlockTypingEvent(docId);
+
             }, function(error){
                 console.log("웹소켓 연결 실패 : ", error);
             });
         }
 
-        // 2. 에디터에 타이핑할 때마다 실시간으로 서버에 데이터 전송
-        function initTypingEvent(docId) {
-            const textarea = document.querySelector('.editor-textarea');
-            if (!textarea) return;
+        
+        // 🧱 [개선 버전] 타이핑 레이스 컨디션을 방지하는 확실한 동기화 이벤트 함수
+        function initBlockTypingEvent(docId) {
+            const editorContainer = document.getElementById('editor-blocks');
+            if (!editorContainer) return;
 
-            textarea.addEventListener('input', function (e) {
-                const currentContent = e.target.value;
+            // 💡 특정 블록의 마지막 전송을 강제로 실행하는 헬퍼 함수
+            function flushPendingChanges(block) {
+                if (!block || !block.classList.contains('editor-block-item')) return;
+                
+                // 디바운스 타이머를 지워서 중복 전송 방지
+                clearTimeout(typingTimeout);
+                
+                const blockId = block.getAttribute('data-block-id');
+                const blockType = block.getAttribute('data-block-type') || 'TEXT';
+                const content = block.innerText;
 
-                // 웹소켓이 연결된 상태라면 서버의 @MessageMapping 주소로 전송
-                if (stompClient && stompClient.connected) {
-                    stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
-                        content: currentContent
-                    }));
+                if (stompClient && stompClient.connected && blockId) {
+                    const payload = {
+                        status: "UPDATE",
+                        documentId: parseInt(docId),
+                        blockId: parseInt(blockId),
+                        blockType: blockType,
+                        content: content
+                    };
+                    stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(payload));
+                    console.log(`🎯 [강제 동기화] 블록[${blockId}] 즉시 저장 완료:`, content);
+                }
+            }
+
+            // [1. 입력 감지 - UPDATE] 일반 타이핑 시에는 0.3초 디바운싱 적용
+            editorContainer.addEventListener('input', function (event) {
+                const targetBlock = event.target;
+                if (targetBlock.classList.contains('editor-block-item')) {
+                    clearTimeout(typingTimeout);
+
+                    typingTimeout = setTimeout(function () {
+                        flushPendingChanges(targetBlock);
+                    }, 300);
+                }
+            });
+
+            // [2. 키보드 감지 - CREATE (엔터 키)] 
+            editorContainer.addEventListener('keydown', function (event) {
+                const targetBlock = event.target;
+                
+                if (targetBlock.classList.contains('editor-block-item') && event.key === 'Enter' && !event.isComposing) {
+                    event.preventDefault(); 
+
+                    // 🔥 [핵심] 다음 블록으로 넘어가기 직전, 현재 블록에 남아있는 타이핑 내용을 즉시 서버로 전송!
+                    flushPendingChanges(targetBlock);
+
+                    const blockType = targetBlock.getAttribute('data-block-type') || 'TEXT';
+                    const sequenceOrder = targetBlock.getAttribute('data-sequence-order') || '0';
+
+                    // 그 후 안전하게 새 블록 생성 요청
+                    if (stompClient && stompClient.connected) {
+                        const payload = {
+                            status: "CREATE",
+                            documentId: parseInt(docId),
+                            blockType: blockType,
+                            sequenceOrder: parseInt(sequenceOrder),
+                            content: ""
+                        };
+                        stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(payload));
+                        console.log(`✨ 새 블록 생성 요청 전송 (기준 Order: ${sequenceOrder})`);
+                    }
+                }
+            });
+
+            // [3. 포커스 아웃 감지 - 마우스로 다른 블록을 클릭해 떠날 때도 안전하게 저장]
+            editorContainer.addEventListener('focusout', function (event) {
+                const targetBlock = event.target;
+                if (targetBlock.classList.contains('editor-block-item')) {
+                    // 블록에서 포커스가 빠져나갈 때 잔여 변경 사항이 있다면 즉시 커밋
+                    flushPendingChanges(targetBlock);
                 }
             });
         }
-
-        // --- 기존에 작성했던 사이드바 토글 함수 (유지) ---
+        // 🔐 [원형 유지] 기존에 작성했던 사이드바 토글 함수
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const toggleBtn = document.getElementById('toggleBtn');
@@ -221,41 +405,6 @@
                 toggleBtn.innerText = '▶';
             } else {
                 toggleBtn.innerText = '◀';
-            }
-        }
-
-        let typingTimeout = null;
-
-        function initTypingEvent(docId){
-            const textarea = document.querySelector('.editor-textarea');
-            if(!textarea) return;
-
-            textarea.addEventListener('input', function(e){
-                const currentContent = e.target.value;
-
-                clearTimeout(typingTimeout);
-
-                typingTimeout = setTimeout(function(){
-                    sendToServer(docId, currentContent, "⏳ 일정 시간 입력 없음으로 자동 저장");
-                }, 1000);
-            });
-
-            textarea.addEventListener('keydown', function(e){
-                if(e.key === 'Enter' && !e.isComposing){
-                    clearTimeout(typingTimeout);
-
-                    const currentContent = e.target.value;
-                    sendToServer(docId, currentContent, "🚀 엔터 입력으로 즉시 저장")
-                }
-            });
-        }
-
-        function sendToServer(docId, content, messageLog){
-            if(stompClient && stompClient.connected){
-                stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
-                    content: content
-                }));
-                console.log(messageLog);
             }
         }
     </script>

@@ -1,10 +1,13 @@
 package com.project.document.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.project.block.entity.Block;
+import com.project.block.enumtype.BlockType;
 import com.project.document.entity.Document;
 import com.project.document.repository.DocumentRepository;
 import com.project.workspace.entity.Workspace;
@@ -26,9 +29,18 @@ public class DocumentService {
         Document document = Document.builder()
                                     .workspace(workspace)                                        
                                     .title(title)
-                                    .content("")
+                                    .blocks(new ArrayList<>())
                                     .build();
         
+        Block defaultBlock = Block.builder()
+                                  .blockType(BlockType.TEXT)
+                                  .content("")
+                                  .sequenceOrder(0)
+                                  .document(document)
+                                  .build();
+
+        document.addBlock(defaultBlock);
+
         documentRepository.save(document);
         
         return document.getDocumentId();
@@ -51,7 +63,12 @@ public class DocumentService {
     @Transactional
     public void modifyContent(Long documentId, String newContent){
         Document document = getDocument(documentId);
-        document.updateContent(newContent);
+        
+        // document.updateContent(newContent);
+
+        if (!document.getBlocks().isEmpty()){
+            document.getBlocks().get(0).updateContent(newContent);
+        }
     }
 
     @Transactional
