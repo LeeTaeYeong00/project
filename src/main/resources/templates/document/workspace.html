@@ -9,6 +9,7 @@
     
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
 
@@ -58,16 +59,36 @@
 
             <!-- 에디터 블록 컨테이너 -->
             <div id="editor-blocks" style="display:flex; flex-direction:column; flex:1; gap: 4px;">
-                <div th:each="block : ${selectedDocument.blocks}" 
-                     th:id="'block-' + ${block.blockId}"
-                     th:data-block-id="${block.blockId}"
-                     th:data-block-type="${block.blockType}"
-                     th:data-sequence-order="${block.sequenceOrder}"
-                     contenteditable="true"
-                     class="editor-block-item"
-                     th:classappend="${#strings.toLowerCase(block.blockType)}"
-                     th:text="${block.content}"
-                     placeholder="명령어 사용은 '/' 입력 (준비 중)"></div>
+                <div th:each="block : ${selectedDocument.blocks}" class="block-wrapper">
+                    
+                    <!-- ➕ ⠿ 블록 왼쪽의 액션 영역 (드래그 핸들 추가) -->
+                    <div class="block-actions" contenteditable="false">
+                        <button class="plus-btn" th:onclick="'toggleBlockMenu(event, ' + ${block.blockId} + ')'">＋</button>
+                        
+                        <!-- ⠿ 점 6개 드래그 핸들 버튼 (여기를 잡아야만 드래그가 되도록 지정할 겁니다) -->
+                        <div class="drag-handle" style="cursor: grab; color: #91908c; padding: 2px 4px; font-size: 14px; user-select: none;">⠿</div>
+                        
+                        <!-- 팝업될 타입 변경 메뉴 (기존 그대로 유지) -->
+                        <div th:id="'menu-' + ${block.blockId}" class="block-menu">
+                            <button type="button" class="menu-item" th:onclick="'changeBlockTypeFromMenu(' + ${block.blockId} + ', \'H1\')'"><span class="menu-icon">H1</span> 대제목</button>
+                            <button type="button" class="menu-item" th:onclick="'changeBlockTypeFromMenu(' + ${block.blockId} + ', \'H2\')'"><span class="menu-icon">H2</span> 중제목</button>
+                            <button type="button" class="menu-item" th:onclick="'changeBlockTypeFromMenu(' + ${block.blockId} + ', \'H3\')'"><span class="menu-icon">H3</span> 소제목</button>
+                            <button type="button" class="menu-item" th:onclick="'changeBlockTypeFromMenu(' + ${block.blockId} + ', \'TEXT\')'"><span class="menu-icon">T</span> 본문 텍스트</button>
+                        </div>
+                    </div>
+
+                    <!-- ✍️ 실제 에디터 블록 영역 (기존 그대로 유지) -->
+                    <div th:id="'block-' + ${block.blockId}"
+                        th:data-block-id="${block.blockId}"
+                        th:data-block-type="${block.blockType}"
+                        th:data-sequence-order="${block.sequenceOrder}"
+                        contenteditable="true"
+                        class="editor-block-item"
+                        th:classappend="${#strings.toLowerCase(block.blockType)}"
+                        th:text="${block.content}"
+                        placeholder="명령어 사용은 '/' 입력 (준비 중)"></div>
+                        
+                </div>
             </div>
             
             <div class="save-bar" style="color: #91908c; font-size: 13px; margin-top: 20px;">

@@ -12,6 +12,8 @@ import com.project.block.repository.BlockRepository;
 import com.project.document.entity.Document;
 import com.project.document.repository.DocumentRepository;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -21,6 +23,10 @@ public class BlockService {
     
     private final BlockRepository blockRepository;
     private final DocumentRepository documentRepository;
+
+    // 💡 [추가] 영속성 컨텍스트 비우기를 위한 엔티티 매니저 주입
+    @PersistenceContext
+    private final EntityManager entityManager;
 
     @Transactional
     public void modifyBlockContent(BlockMessageDTO message){
@@ -52,8 +58,6 @@ public class BlockService {
 
         Document document = documentRepository.findById(message.getDocumentId()).orElseThrow(() -> new IllegalArgumentException("문서가 존재하지 않습니다."));
 
-        
-
         Block newBlock = Block.builder()
                               .document(document)
                               .blockType(message.getBlockType() != null ? message.getBlockType() : BlockType.TEXT)
@@ -78,5 +82,18 @@ public class BlockService {
         blockRepository.delete(targetBlock);
 
         return message;
+    }
+
+    @Transactional
+    public void reorderBlocks(List<BlockMessageDTO.BlockOrderInfo> orderedBlocks) {
+        if (orderedBlocks == null || orderedBlocks.isEmpty()) return;
+
+        for (BlockMessageDTO.BlockOrderInfo info : orderedBlocks) {
+            blockRepository.updateSequenceOrder(info.getBlockId(), info.getSequenceOrder());
+        }
+        
+        // 🚨 [수정 및 추가] DB 저장 후 1차 캐시(영속성 컨텍스트)를 강제로 클리어
+        blockRepository.flush(); 
+        entityManager.clear(); 
     }
 }

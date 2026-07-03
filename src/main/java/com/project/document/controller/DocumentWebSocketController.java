@@ -31,16 +31,13 @@ public class DocumentWebSocketController {
             switch (message.getStatus()) {
                 case "CREATE":
                     log.info("🟢 [SWITCH] CREATE 케이스 진입 성공!");
-                    
                     BlockMessageDTO createdMessage = blockService.createNewBlock(message);
-
                     messagingTemplate.convertAndSend("/topic/documents/" + documentId, createdMessage);
                     log.info("📢 [CREATE] 새 블록 생성 브로드캐스팅 완료! BlockID: {}", createdMessage.getBlockId());
                     break;
                     
                 case "UPDATE":
                     log.info("🔵 [SWITCH] UPDATE 케이스 진입 성공!");
-                    // 현재 임시 데이터 전송을 위해 ID 검증을 잠시 우회하거나 로그만 찍음
                     if (message.getBlockId() != null) {
                         blockService.modifyBlockContent(message);
                         log.info("💾 [DB] 블록 내용 수정 완료!");
@@ -52,9 +49,20 @@ public class DocumentWebSocketController {
                 case "DELETE":
                     log.info("🔴 [SWITCH] DELETE 케이스 진입 성공!");
                     BlockMessageDTO deletedMessage = blockService.deleteBlcok(message);
-
                     messagingTemplate.convertAndSend("/topic/documents/" + documentId, deletedMessage);
                     log.info("📢 [DELETE] 블록 삭제 브로드캐스팅 완료! BlockID: {}", deletedMessage.getBlockId());
+                    break;
+                
+                // 💡 [추가] 드래그 앤 드롭 순서 변경 케이스 처리
+                case "REORDER":
+                    log.info("🔀 [SWITCH] REORDER 케이스 진입 성공!");
+                    if (message.getOrderedBlocks() != null && !message.getOrderedBlocks().isEmpty()) {
+                        // 1. 서비스 레이어를 호출하여 DB의 sequenceOrder 일괄 업데이트 수행
+                        blockService.reorderBlocks(message.getOrderedBlocks());
+                        log.info("💾 [DB] 블록 순서 재정렬 벌크 업데이트 완료!");
+                    } else {
+                        log.warn("⚠️ [경고] REORDER 요청이지만 순서 목록(orderedBlocks)이 비어있습니다.");
+                    }
                     break;
                     
                 default:
@@ -63,6 +71,7 @@ public class DocumentWebSocketController {
             }
             
             // 전송 규격이 잘 맞는지 확인하기 위해 클라이언트로 그대로 다시 반사(브로드캐스팅)
+            // (UPDATE나 REORDER 이벤트 등은 이 하단 공통 라인을 타고 바로 브로드캐스트 됩니다)
             messagingTemplate.convertAndSend("/topic/documents/" + documentId, message);
             
         } catch (Exception e) {
