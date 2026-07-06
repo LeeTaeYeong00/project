@@ -72,6 +72,65 @@ document.addEventListener('click', function() {
     document.body.classList.remove('menu-active');
 });
 
+// 🔍 슬래시 명령어 메뉴 생성 및 필터링 적용
+export function showSlashMenu(targetBlock, filterText = "") {
+    // 기존 메뉴가 있다면 제거 (필터링 갱신을 위해 다시 그림)
+    hideSlashMenu();
+
+    const menu = document.createElement('div');
+    menu.id = 'slash-command-menu';
+    menu.className = 'slash-menu';
+
+    // 정의된 메뉴 항목 리스트
+    const menuItems = [
+        { type: 'H1', label: '대제목' },
+        { type: 'H2', label: '중제목' },
+        { type: 'H3', label: '소제목' },
+        { type: 'TEXT', label: '본문 텍스트' }
+    ];
+
+    // 필터링된 항목 생성
+    const filteredItems = menuItems.filter(item => 
+        ('/' + item.type.toLowerCase()).startsWith('/' + filterText.toLowerCase())
+    );
+
+    // 조건에 맞는 항목이 없으면 메뉴를 만들지 않음
+    if (filteredItems.length === 0) return;
+
+    // 메뉴 아이템 렌더링
+    menu.innerHTML = filteredItems.map((item, index) => `
+        <div class="slash-item ${index === 0 ? 'active' : ''}" data-type="${item.type}">
+            <span class="menu-icon">${item.type === 'TEXT' ? 'T' : item.type}</span> ${item.label}
+        </div>
+    `).join('');
+
+    document.body.appendChild(menu);
+
+    // 📍 좌표 계산 (기존 로직 유지)
+    const selection = window.getSelection();
+    if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (rect.bottom + 5) + 'px';
+        menu.style.left = rect.left + 'px';
+    } else {
+        const blockRect = targetBlock.getBoundingClientRect();
+        menu.style.position = 'fixed';
+        menu.style.top = (blockRect.bottom) + 'px';
+        menu.style.left = (blockRect.left + 10) + 'px';
+    }
+}
+
+// 🔍 슬래시 메뉴 숨기기
+export function hideSlashMenu() {
+    const menu = document.getElementById('slash-command-menu');
+    if (menu) menu.remove();
+}
+
+// 외부에서 꺼내 쓸 수 있도록 window에 바인딩
+window.hideSlashMenu = hideSlashMenu;
+
 // ⚡ 중요: 분할된 모듈 함수들을 HTML 인라인 태그(onclick 등)가 접근할 수 있도록 글로벌 영역(window)에 명시적 등록
 window.toggleSidebar = toggleSidebar;
 window.toggleBlockMenu = toggleBlockMenu;

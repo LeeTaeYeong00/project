@@ -264,3 +264,46 @@ body.menu-active .block-wrapper:hover {
 .block-wrapper.block-chosen .editor-block-item {
     background-color: transparent !important;
 }
+
+/* ==========================================================================
+   💡 슬래시 명령어(Slash Command) 팝업 레이아웃
+   ========================================================================== */
+.slash-menu {
+    position: fixed;
+    z-index: 999999;
+    background: #ffffff;
+    border: 1px solid #dfdeda;
+    border-radius: 6px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+    padding: 6px;
+    width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    pointer-events: auto;
+}
+
+.slash-item {
+    display: flex;
+    align-items: center;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #37352f;
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+}
+
+/* 키보드로 선택 중이거나 마우스 호버 시 디자인 */
+.slash-item:hover, 
+.slash-item.active {
+    background-color: #f7f7f5;
+}
+
+.slash-item .menu-icon {
+    margin-right: 10px;
+    font-weight: bold;
+    color: #91908c;
+    width: 22px;
+    text-align: center;
+}

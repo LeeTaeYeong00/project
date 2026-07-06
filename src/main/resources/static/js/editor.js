@@ -1,5 +1,6 @@
 import { stompClient } from '/js/websocket.js';
 import { moveCursorToEnd, moveCursorToStart } from '/js/utils.js';
+import { showSlashMenu, hideSlashMenu } from '/js/ui.js'; // 💡 확장자 .js 명시 확인
 
 export let typingTimeout = null;
 
@@ -34,52 +35,130 @@ export function initBlockTypingEvent(docId) {
     // 1) 텍스트 입력 디바운싱
     editorContainer.addEventListener('input', function (event) {
         const targetBlock = event.target;
-        if (targetBlock.classList.contains('editor-block-item')) {
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(function () {
-                flushPendingChanges(targetBlock);
-            }, 300);
-        }
-    });
+        if (!targetBlock.classList.contains('editor-block-item')) return;
 
+        const text = targetBlock.innerText;
+        
+        // 슬래시가 포함되어 있다면 필터링 모드 활성화
+        if (text.includes('/')) {
+            // 커서 위치의 텍스트가 '/'로 시작하거나 슬래시 뒤에 명령어가 있는 경우 추출
+            const slashIndex = text.lastIndexOf('/');
+            const filterText = text.substring(slashIndex + 1).trim();
+            
+            showSlashMenu(targetBlock, filterText);
+        } else {
+            hideSlashMenu();
+        }
+
+        // 기존 디바운싱 저장
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(function () {
+            flushPendingChanges(targetBlock);
+        }, 300);
+    });
+    
     // 2) 키보드 단축키 및 비즈니스 로직 제어
     editorContainer.addEventListener('keydown', function (event) {
         const targetBlock = event.target;
         if (!targetBlock.classList.contains('editor-block-item')) return;
 
-        // 슬래시(/) 명령어 변환
-        if (event.key === ' ' || event.key === 'Enter') {
-            const text = targetBlock.innerText.trim();
-            let newType = null;
+        // 💡 실시간 슬래시 명령어 메뉴 객체 확인
+        const slashMenu = document.getElementById('slash-command-menu');
 
-            if (text === '/h1') newType = 'H1';
-            else if (text === '/h2') newType = 'H2';
-            else if (text === '/h3') newType = 'H3';
-            else if (text === '/text') newType = 'TEXT';
+        // ==========================================================================
+        // 🔮 [A 파트] 슬래시 메뉴가 활성화되어 있을 때의 키보드 제어 (우선순위 1등)
+        // ==========================================================================
+        if (slashMenu) {
+            const items = Array.from(slashMenu.querySelectorAll('.slash-item'));
+            const activeIndex = items.findIndex(item => item.classList.contains('active'));
 
-            if (newType) {
-                event.preventDefault(); 
-                targetBlock.innerText = '';
-                targetBlock.className = 'editor-block-item ' + newType.toLowerCase();
-                targetBlock.setAttribute('data-block-type', newType);
+            // 메뉴 아래로 이동
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                items[activeIndex].classList.remove('active');
+                const nextIndex = (activeIndex + 1) % items.length;
+                items[nextIndex].classList.add('active');
+                return; // 기존의 블록 아래 이동 로직으로 내려가지 않도록 차단
+            }
 
-                const blockId = targetBlock.getAttribute('data-block-id');
-                if (stompClient && stompClient.connected && blockId) {
-                    const payload = {
-                        status: "UPDATE",
-                        documentId: parseInt(docId),
-                        blockId: parseInt(blockId),
-                        blockType: newType,
-                        content: ""
-                    };
-                    stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(payload));
+            // 메뉴 위로 이동
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                items[activeIndex].classList.remove('active');
+                const prevIndex = (activeIndex - 1 + items.length) % items.length;
+                items[prevIndex].classList.add('active');
+                return; // 기존의 블록 위 이동 로직으로 내려가지 않도록 차단
+            }
+
+            // 메뉴 닫기
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                hideSlashMenu();
+                return;
+            }
+
+            // 선택 항목 확정 및 블록 변환
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const activeItem = items[activeIndex];
+                if (activeItem) {
+                    const newType = activeItem.getAttribute('data-type');
+                    
+                    // 💡 수정 핵심: 명령어(/...)를 완전히 제거하고 텍스트 초기화
+                    // 명령어 문자열을 찾아 삭제하는 정규식 사용
+                    targetBlock.innerText = targetBlock.innerText.replace(/\/[a-zA-Z0-9]*/, '');
+                    
+                    // 블록 스타일 적용
+                    targetBlock.className = 'editor-block-item ' + newType.toLowerCase();
+                    targetBlock.setAttribute('data-block-type', newType);
+
+                    // 서버 동기화
+                    const blockId = targetBlock.getAttribute('data-block-id');
+                    if (stompClient && stompClient.connected && blockId) {
+                        const payload = {
+                            status: "UPDATE",
+                            documentId: parseInt(docId),
+                            blockId: parseInt(blockId),
+                            blockType: newType,
+                            content: targetBlock.innerText
+                        };
+                        stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(payload));
+                    }
+
+                    // 💡 추가: 변환 후 커서를 텍스트 끝으로 이동 (필요 시)
+                    moveCursorToEnd(targetBlock);
+                    
+                    hideSlashMenu();
                 }
-                return; 
+                return;
             }
         }
 
+        // ==========================================================================
+        // 🔍 [B 파트] 슬래시(/) 입력 실시간 트리거 및 지우기 감지
+        // ==========================================================================
+        if (event.key === '/') {
+            setTimeout(() => {
+                showSlashMenu(targetBlock, ""); // 처음 칠 때는 전체 메뉴 표시
+            }, 10);
+        }
+
+        // Backspace로 문자를 지우다 '/'가 완전히 증발하면 팝업 자동 차단
+        if (event.key === 'Backspace' && slashMenu) {
+            setTimeout(() => {
+                if (!targetBlock.innerText.includes('/')) {
+                    hideSlashMenu();
+                }
+            }, 10);
+        }
+
+
+        // ==========================================================================
+        // 🧱 [C 파트] 기존의 오리지널 블록 제어 비즈니스 로직 (메뉴가 닫혔을 때만 동작)
+        // ==========================================================================
+        
         // 백스페이스 (지우기 및 위 블록과 병합)
-        if (event.key === 'Backspace') {
+        if (event.key === 'Backspace' && !slashMenu) {
             const selection = window.getSelection();
             if (!selection.rangeCount) return;
 
@@ -168,7 +247,7 @@ export function initBlockTypingEvent(docId) {
         }
 
         // 위쪽 방향키 이동
-        if (event.key === 'ArrowUp') {
+        if (event.key === 'ArrowUp' && !slashMenu) {
             const selection = window.getSelection();
             if (!selection.rangeCount) return;
 
@@ -224,7 +303,7 @@ export function initBlockTypingEvent(docId) {
         }
 
         // 아래쪽 방향키 이동
-        if (event.key === 'ArrowDown') {
+        if (event.key === 'ArrowDown' && !slashMenu) {
             const selection = window.getSelection();
             if (!selection.rangeCount) return;
 
@@ -286,8 +365,7 @@ export function initBlockTypingEvent(docId) {
         }
 
         // 엔터 키 처리 (블록 쪼개고 새로 생성하기)
-        // ⚡ [체크포인트] editor.js 파일 내 Enter 키 매핑 파트
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !slashMenu) {
             event.preventDefault(); 
 
             const selection = window.getSelection();
@@ -317,7 +395,6 @@ export function initBlockTypingEvent(docId) {
             const currentBlockId = targetBlock.getAttribute('data-block-id');
             const currentBlockType = targetBlock.getAttribute('data-block-type') || 'TEXT';
 
-            // 현재 블록 글자 업데이트 발송
             if (stompClient && stompClient.connected) {
                 stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
                     status: "UPDATE", 
@@ -327,7 +404,6 @@ export function initBlockTypingEvent(docId) {
                     content: frontText
                 }));
                 
-                // 새 블록 생성(CREATE) 요청 발송
                 stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
                     status: "CREATE", 
                     documentId: parseInt(docId), 
@@ -339,10 +415,19 @@ export function initBlockTypingEvent(docId) {
         }
     });
 
-    // 3) 포커스 아웃 실시간 밀어넣기
+    // 3) 포커스 아웃 실시간 밀어넣기 및 슬래시 메뉴 청소
     editorContainer.addEventListener('focusout', function (event) {
         if (event.target.classList.contains('editor-block-item')) {
             flushPendingChanges(event.target);
+            // 포커스를 잃으면 슬래시 메뉴가 자연스럽게 닫히도록 지연 추가
+            setTimeout(hideSlashMenu, 150);
+        }
+    });
+
+    // 💡 에디터 외부 바탕을 눌렀을 때 팝업 차단용 글로벌 이벤트 리스너 추가
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('#slash-command-menu') && !e.target.classList.contains('editor-block-item')) {
+            hideSlashMenu();
         }
     });
 }
