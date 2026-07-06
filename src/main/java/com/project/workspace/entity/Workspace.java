@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.project.user.entity.User;
+import com.project.workspace.enumtype.WorkspaceRole;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -45,4 +46,22 @@ public class Workspace {
 
     @OneToMany(mappedBy = "workspace", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<WorkspaceMember> members = new ArrayList<>();
+
+    @Column(unique = true)
+    private String inviteCode;
+
+    private LocalDateTime inviteCodeExpiresAt;
+
+    public void updateInviteCode(String inviteCode, LocalDateTime expiresAt){
+        this.inviteCode = inviteCode;
+        this.inviteCodeExpiresAt = expiresAt;
+    }
+
+    public boolean checkOwner(Long loginUserId){
+        if(this.members == null || loginUserId == null) return false;
+        
+        return this.members.stream().filter(m -> m != null && m.getUser() != null)
+                .filter(m -> loginUserId.equals(m.getUser().getUserId()))
+                .findFirst().map(m -> m.getRole() != null && m.getRole() == WorkspaceRole.OWNER).orElse(false);
+    }
 }

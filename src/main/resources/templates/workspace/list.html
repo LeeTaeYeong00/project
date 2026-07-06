@@ -6,40 +6,66 @@
     <style>
         .workspace-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
         .header { display: flex; justify-content: space-between; align-items: center; }
+        .action-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .btn-secondary { padding: 10px 15px; cursor: pointer; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-info { background-color: #4da6ff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h2><span th:text="${username}">사용자</span>님의 대시보드</h2>
+        <h2><span th:text="${username}"></span>님의 워크스페이스</h2>
         <form th:action="@{/users/logout}" method="post">
             <button type="submit">로그아웃</button>
         </form>
     </div>
 
     <h3>나의 워크스페이스 목록</h3>
-    <button th:onclick="|location.href='@{/workspaces/create}'|" style="padding: 10px 15px; margin-bottom: 20px;">
-        + 새 워크스페이스 만들기
-    </button>
+    
+    <!-- 💡 상단 액션 바: 새 공간 생성 버튼 옆에 초대 코드 입력 버튼 추가 -->
+    <div class="action-bar">
+        <button th:onclick="|location.href='@{/workspaces/create}'|" style="padding: 10px 15px; cursor: pointer;">
+            + 새 워크스페이스 만들기
+        </button>
+        <button class="btn-secondary" onclick="openJoinModal()">
+            🔑 초대 코드로 입장하기
+        </button>
+    </div>
 
     <div th:if="${#lists.isEmpty(workspaces)}">
         <p>참여 중인 워크스페이스가 없습니다. 새 공간을 만들어보세요!</p>
     </div>
 
     <div th:unless="${#lists.isEmpty(workspaces)}">
-        <div th:each="ws : ${workspaces}" class="workspace-card" style="border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px;">
+        <div th:each="ws : ${workspaces}" class="workspace-card">
             
             <h4 th:text="${ws.workspaceName}" style="margin: 0 0 5px 0;">워크스페이스 이름</h4>
-            <p th:text="${ws.description}" style="margin: 0 0 15px 0; color: #666;">워크스페이스 설명</p>
+            <p th:text="${ws.description}" style="margin: 0 0 10px 0; color: #666;">워크스페이스 설명</p>
+            
+            <!-- ✨ [추가]: 총 인원수 표시 영역 (500 에러 방지 안전벨트 장착) -->
+            <div style="margin: 0 0 15px 0; font-size: 0.85rem; color: #555;">
+                <span style="background-color: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                    👥 총 인원: <strong th:text="${ws.members != null} ? ${ws.members.size()} : 0">0</strong>명
+                </span>
+            </div>
             
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 
-                <button th:onclick="|location.href='@{/workspaces/{id}/documents(id=${ws.workspaceId})}'|" style="padding: 6px 15px; cursor: pointer;">
-                    입장하기
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button th:onclick="|location.href='@{/workspaces/{id}/documents(id=${ws.workspaceId})}'|" style="padding: 6px 15px; cursor: pointer;">
+                        입장하기
+                    </button>
 
-                <form th:action="@{/workspaces/{id}/delete(id=${ws.workspaceId})}" method="post" style="margin: 0;"
-                    onsubmit="return confirm('정말 이 워크스페이스를 삭제하시겠습니까? 내부 문서와 데이터가 모두 사라집니다.');">
+                    <!-- 💡 [추가]: 워크스페이스 OWNER가 초대 코드를 생성하거나 조회할 수 있는 버튼 -->
+                    <button th:if="${loginUserId != null and ws.checkOwner(loginUserId)}"
+                            th:onclick="showInviteCode([[${ws.workspaceId}]])">
+                        🎫 초대 코드 보기
+                    </button>
+                </div>
+
+                <form th:if="${loginUserId != null and ws.checkOwner(loginUserId)}"
+                      th:action="@{/workspaces/{id}/delete(id=${ws.workspaceId})}" method="post" style="margin: 0;"
+                      onsubmit="return confirm('정말 이 워크스페이스를 삭제하시겠습니까? 내부 문서와 데이터가 모두 사라집니다.');">
                     <button type="submit" style="background-color: #ff4d4d; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
                         삭제하기
                     </button>
@@ -49,5 +75,67 @@
 
         </div>
     </div>
+
+    <!-- ========================================== -->
+    <!-- ✨ 비동기 처리를 위한 자바스크립트 로직          -->
+    <!-- ========================================== -->
+    <script>
+        /**
+         * 1. 🔑 [초대 코드로 입장하기] 버튼 클릭 시 
+         */
+        function openJoinModal() {
+            const code = prompt("입장하려는 워크스페이스의 초대 코드를 입력하세요:");
+            if (!code || !code.trim()) return;
+
+            // 백엔드의 @PostMapping("/workspaces/join") API 호출
+            fetch('/workspaces/join', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ inviteCode: code.trim() })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    location.reload(); // 성공 시 리스트 갱신을 위해 새로고침
+                } else {
+                    alert("❌ 실패: " + data.message);
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("서버 통신 중 오류가 발생했습니다.");
+            });
+        }
+
+        /**
+         * 📢 2. [초대 코드 보기] 버튼 클릭 시
+         */
+        function showInviteCode(workspaceId) {
+            // 백엔드의 @PostMapping("/workspaces/{workspaceId}/invite-code") API 호출
+            fetch(`/workspaces/${workspaceId}/invite-code`, {
+                method: 'POST'
+            })
+            .then(response => {
+                if (!response.ok) {
+                    // OWNER가 아닐 경우 서버에서 badRequest(400) 에러를 뱉으므로 이에 대한 예외 처리
+                    return response.json().then(err => { throw new Error(err.message); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // 유저가 복사하기 편하도록 prompt 창으로 생성된 코드를 띄워줌
+                    prompt("이 워크스페이스의 초대 코드입니다. 복사해서 공유하세요 (7일간 유효):", data.inviteCode);
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error);
+                alert("❌ 알림: " + error.message);
+            });
+        }
+    </script>
 </body>
 </html>
