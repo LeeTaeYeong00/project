@@ -216,3 +216,51 @@ body.menu-active .block-wrapper:hover {
 .block-menu.show {
     display: block !important;
 }
+
+/* ==========================================================================
+   💡 노션 스타일 드래그 앤 드롭 전용 스타일 (추가 분량)
+   ========================================================================== */
+
+/* 1. 드래그 핸들러(⠿) 마우스 커서 지정 및 기본 디자인 */
+.drag-handle {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #91908c;
+    cursor: grab; /* 마우스를 올리면 잡을 수 있는 손바닥 모양으로 변경 */
+    font-size: 16px;
+    border-radius: 4px;
+    user-select: none;
+}
+
+.drag-handle:hover {
+    background-color: #efeee0;
+    color: #37352f;
+}
+
+/* 2. 드래그를 시작해서 마우스로 꾹 쥐고 있을 때 (Grab 상태) */
+.drag-handle:active {
+    cursor: grabbing; /* 꽉 쥔 손바닥 모양으로 변경 */
+}
+
+/* 3. [핵심 효과] Sortable이 드래그 중인 원본 블록(잔상 위치)에 붙이는 클래스 */
+.block-wrapper.block-ghost {
+    opacity: 0.3 !important; /* 원래 위치의 블록을 흐릿하게 투명도 처리 */
+    background-color: #edece9 !important; /* 옅은 회색 배경으로 가이드라인 표시 */
+    border-radius: 4px;
+}
+
+/* 4. [추가 효과] 마우스로 집어 올려서 동동 떠다니는 실제 블록 스타일 */
+.block-wrapper.block-chosen {
+    background-color: #ffffff !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04); /* 살짝 붕 떠 있는 듯한 그림자 */
+    border-radius: 4px;
+}
+
+/* 5. 드래그 도중 내부에 호버 배경색이 튀는 현상 방지 */
+.block-wrapper.block-ghost .editor-block-item,
+.block-wrapper.block-chosen .editor-block-item {
+    background-color: transparent !important;
+}

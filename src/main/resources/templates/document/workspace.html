@@ -97,18 +97,15 @@
         </div>
     </div>
 
-    <!-- 💾 2. 외부 비즈니스 로직 스크립트 연동 -->
-    <script th:src="@{/js/editor.js}"></script>
+    <!-- 모듈 초기화 메인 스크립트 -->
+    <script type="module">
+        import '/js/ui.js'
 
-    <!-- 💾 3. 타임리프 상태 변수 매핑 및 동기화 초기 가동 트리거 -->
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-        const currentDocId = /*[[${selectedDocument != null ? selectedDocument.documentId : null}]]*/ null;
-        /*]]>*/
+        import { connectWebSocket } from '/js/websocket.js';
 
-        if (currentDocId) {
-            connectWebSocket(currentDocId);
-        }
+        // 타겟 문서 ID를 주입하여 에디터 전동 엔진 가동!
+        const docId = "1"; // 실제 동적 변수나 파라미터를 바인딩하세요.
+        connectWebSocket(docId);
     </script>
 </body>
 </html>
