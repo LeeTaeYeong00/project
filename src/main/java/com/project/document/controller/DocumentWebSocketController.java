@@ -17,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class DocumentWebSocketController {
     
+    private final DocumentService documentService;
     private final BlockService blockService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -71,7 +72,17 @@ public class DocumentWebSocketController {
                         log.warn("⚠️ [경고] REORDER 요청이지만 순서 목록(orderedBlocks)이 비어있습니다.");
                     }
                     break;
+                
+                case "RENAME":
+                    log.info("✏️ [SWITCH] RENAME 케이스 진입 성공! 문서 ID: {}, 새 제목: {}", documentId, message.getContent());
                     
+                    // 💡 작성해두신 modifyTitle 메서드 사용
+                    documentService.modifyTitle(documentId, message.getContent());
+                    
+                    log.info("💾 [DB] 문서 제목 업데이트 완료!");
+                    messagingTemplate.convertAndSend("/topic/documents/" + documentId, message);
+                    break;
+                
                 default:
                     log.warn("❌ [SWITCH] 알 수 없는 상태값: {}", message.getStatus());
                     return;

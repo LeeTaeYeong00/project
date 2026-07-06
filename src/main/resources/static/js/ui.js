@@ -128,6 +128,43 @@ export function hideSlashMenu() {
     if (menu) menu.remove();
 }
 
+export function toggleTitleEdit() {
+    const displayTitle = document.getElementById('display-title');
+    const editInput = document.getElementById('edit-title-input');
+    const editBtn = document.getElementById('edit-title-btn');
+    
+    // 💡 버튼에서 docId 가져오기
+    const docId = editBtn.getAttribute('data-doc-id');
+
+    const isEditing = editInput.style.display !== 'none';
+
+    if (isEditing) {
+        // [저장 시점] 서버로 데이터 전송
+        const newTitle = editInput.value;
+        
+        if (stompClient && stompClient.connected) {
+            const payload = {
+                status: "RENAME",
+                documentId: parseInt(docId),
+                content: newTitle
+            };
+            stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify(payload));
+        }
+
+        displayTitle.innerText = newTitle;
+        displayTitle.style.display = 'block';
+        editInput.style.display = 'none';
+        editBtn.innerText = '✏️';
+    } else {
+        // [수정 시작]
+        editInput.value = displayTitle.innerText;
+        displayTitle.style.display = 'none';
+        editInput.style.display = 'block';
+        editInput.focus();
+        editBtn.innerText = '💾';
+    }
+}
+
 // 외부에서 꺼내 쓸 수 있도록 window에 바인딩
 window.hideSlashMenu = hideSlashMenu;
 

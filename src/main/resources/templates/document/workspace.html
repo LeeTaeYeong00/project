@@ -35,10 +35,13 @@
             </li>
             <li th:unless="${#lists.isEmpty(documents)}" th:each="doc : ${documents}">
                 <a th:href="@{/workspaces/{wsId}/documents(wsId=${workspaceId}, docId=${doc.documentId})}" 
-                   th:classappend="${selectedDocument != null && selectedDocument.documentId == doc.documentId} ? 'active' : ''"
-                   class="doc-item">
+                th:classappend="${selectedDocument != null && selectedDocument.documentId == doc.documentId} ? 'active' : ''"
+                class="doc-item">
                     <span class="doc-icon">📄</span>
-                    <span th:text="${doc.title}">문서 제목</span>
+                    <!-- 💡 수정된 부분: class와 data-doc-id 추가 -->
+                    <span class="sidebar-doc-title" 
+                        th:data-doc-id="${doc.documentId}" 
+                        th:text="${doc.title}">문서 제목</span>
                 </a>
             </li>
         </ul>
@@ -52,7 +55,17 @@
         </div>
 
         <div th:unless="${selectedDocument == null}" class="editor-container">
-            <h1 class="editor-title" th:text="${selectedDocument.title}">문서 제목</h1>
+            <div class="title-wrapper" style="display: flex; align-items: center; gap: 10px;">
+                <!-- 읽기 전용 제목 -->
+                <h1 id="display-title" th:text="${selectedDocument.title}">문서 제목</h1>
+                
+                <!-- 편집용 인풋 (평소엔 숨김) -->
+                <input type="text" id="edit-title-input" th:value="${selectedDocument.title}" 
+                    style="display: none; font-size: 2em; font-weight: bold; border: 1px solid #ccc; padding: 5px;">
+                
+                <!-- 수정 버튼 (아이콘 디자인) -->
+                <button id="edit-title-btn" class="edit-btn" th:data-doc-id="${selectedDocument.documentId}">✏️</button>
+            </div>
             <div class="editor-meta">
                 최종 수정: <span th:text="${#temporals.format(selectedDocument.updatedAt, 'yyyy-MM-dd HH:mm:ss')}">수정일</span>
             </div>

@@ -1,6 +1,6 @@
 import { stompClient } from '/js/websocket.js';
 import { moveCursorToEnd, moveCursorToStart } from '/js/utils.js';
-import { showSlashMenu, hideSlashMenu } from '/js/ui.js'; // 💡 확장자 .js 명시 확인
+import { showSlashMenu, hideSlashMenu, toggleTitleEdit } from '/js/ui.js'; // 💡 확장자 .js 명시 확인
 
 export let typingTimeout = null;
 
@@ -430,4 +430,13 @@ export function initBlockTypingEvent(docId) {
             hideSlashMenu();
         }
     });
+
+
 }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const editBtn = document.getElementById('edit-title-btn');
+        if (editBtn) {
+            editBtn.addEventListener('click', toggleTitleEdit);
+        }
+    }); 

@@ -307,3 +307,17 @@ body.menu-active .block-wrapper:hover {
     width: 22px;
     text-align: center;
 }
+
+.edit-btn {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.2s;
+}
+
+.edit-btn:hover {
+    background: #e0e0e0;
+}

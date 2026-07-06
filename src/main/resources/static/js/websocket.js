@@ -17,6 +17,20 @@ export function connectWebSocket(docId) {
         stompClient.subscribe('/topic/documents/' + docId, function (response) {
             const message = JSON.parse(response.body);
 
+            if (message.status === "RENAME") {
+                // 메인 화면 업데이트
+                const displayTitle = document.getElementById('display-title');
+                if (displayTitle) displayTitle.innerText = message.content;
+
+                // 모든 사이드바 제목을 순회하며 docId가 일치하는 녀석만 변경
+                const sidebarTitles = document.querySelectorAll('.sidebar-doc-title');
+                sidebarTitles.forEach(el => {
+                    // el.getAttribute('data-doc-id')가 문자열이므로 타입을 맞춰 비교
+                    if (el.getAttribute('data-doc-id') == message.documentId.toString()) {
+                        el.innerText = message.content;
+                    }
+                });
+            }
             // [1] UPDATE 수신
             if (message.status === "UPDATE") {
                 const targetBlock = document.getElementById('block-' + message.blockId);
