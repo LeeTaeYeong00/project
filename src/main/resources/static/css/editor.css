@@ -89,6 +89,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helve
     color: #37352f;
     word-break: break-all;
     border-radius: 4px;
+    white-space: pre-wrap;
 }
 
 .editor-block-item:hover { background-color: #f7f7f5; }
