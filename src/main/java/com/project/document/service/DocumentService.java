@@ -50,6 +50,10 @@ public class DocumentService {
         return documentRepository.findByWorkspace_WorkspaceId(workspaceId);
     }
 
+    public Long getWorkspaceIdByDocumentId(Long documentId){
+        return documentRepository.findWorkspaceIdByDocumentId(documentId);
+    }
+
     public Document getDocument(Long documentId){
         return documentRepository.findById(documentId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 문서입니다."));
     }

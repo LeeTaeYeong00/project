@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
-
+    <div id="workspace-info" th:data-workspace-id="${workspaceId}" style="display:none;"></div>
     <!-- 왼쪽 사이드바 영역 -->
     <div class="sidebar" id="sidebar">
         <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
@@ -38,10 +38,15 @@
                 th:classappend="${selectedDocument != null && selectedDocument.documentId == doc.documentId} ? 'active' : ''"
                 class="doc-item">
                     <span class="doc-icon">📄</span>
-                    <!-- 💡 수정된 부분: class와 data-doc-id 추가 -->
-                    <span class="sidebar-doc-title" 
-                        th:data-doc-id="${doc.documentId}" 
-                        th:text="${doc.title}">문서 제목</span>
+                    <span class="sidebar-doc-title" th:data-doc-id="${doc.documentId}" th:text="${doc.title}">문서 제목</span>
+                    
+                    <!-- 💡 추가: ... 버튼 -->
+                    <span class="doc-menu-btn" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); toggleMenu(event, this)">⋮</span>
+                                    <!-- 💡 추가: 메뉴 팝업 (기본 숨김) -->
+                    <div class="doc-menu-popup" th:id="'menu-' + ${doc.documentId}" style="display:none;">
+                        <span class="menu-item" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); prepareRename(this)">이름 변경</span>
+                        <span class="menu-item" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); deleteDocFromSidebar(this)">삭제</span>
+                    </div>
                 </a>
             </li>
         </ul>
@@ -117,7 +122,7 @@
         import { connectWebSocket } from '/js/websocket.js';
 
         // 타겟 문서 ID를 주입하여 에디터 전동 엔진 가동!
-        const docId = "1"; // 실제 동적 변수나 파라미터를 바인딩하세요.
+        const docId = "[[${selectedDocument?.documentId}]]"; // null 방지를 위해 안전하게 처리
         connectWebSocket(docId);
     </script>
 </body>

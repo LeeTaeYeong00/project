@@ -8,6 +8,7 @@ export let currentDocId = null;
 // ⚡ 웹소켓 서버 연결 및 구독 설정
 export function connectWebSocket(docId) {
     currentDocId = docId;
+    const workspaceId = document.getElementById('workspace-info').dataset.workspaceId;
     const socket = new SockJS('/ws-connect');
     stompClient = Stomp.over(socket);
 
@@ -18,15 +19,19 @@ export function connectWebSocket(docId) {
             const message = JSON.parse(response.body);
 
             if (message.status === "RENAME") {
+                console.log("📥 [RENAME 수신] 문서ID:", message.documentId, "내용:", message.content);
+                
                 // 메인 화면 업데이트
                 const displayTitle = document.getElementById('display-title');
                 if (displayTitle) displayTitle.innerText = message.content;
 
-                // 모든 사이드바 제목을 순회하며 docId가 일치하는 녀석만 변경
+                // 사이드바 업데이트
                 const sidebarTitles = document.querySelectorAll('.sidebar-doc-title');
                 sidebarTitles.forEach(el => {
-                    // el.getAttribute('data-doc-id')가 문자열이므로 타입을 맞춰 비교
-                    if (el.getAttribute('data-doc-id') == message.documentId.toString()) {
+                    // [디버깅] el.getAttribute('data-doc-id') 값과 message.documentId가 실제로 일치하는지 확인
+                    const targetId = el.getAttribute('data-doc-id');
+                    if (targetId == message.documentId) { // == 연산자로 느슨한 비교
+                        console.log("✅ 사이드바 제목 업데이트 대상 발견!");
                         el.innerText = message.content;
                     }
                 });
@@ -107,23 +112,23 @@ export function connectWebSocket(docId) {
             }
             // [3] DELETE 수신
             else if (message.status === "DELETE") {
-                const targetBlock = document.getElementById('block-' + message.blockId);
-                if (!targetBlock) return;
+                    const targetBlock = document.getElementById('block-' + message.blockId);
+                    if (!targetBlock) return;
 
-                const currentActive = document.activeElement;
-                const currentWrapper = targetBlock.closest('.block-wrapper');
-                let previousBlock = null;
-                
-                if (currentWrapper && currentWrapper.previousElementSibling) {
-                    previousBlock = currentWrapper.previousElementSibling.querySelector('.editor-block-item');
-                }
+                    const currentActive = document.activeElement;
+                    const currentWrapper = targetBlock.closest('.block-wrapper');
+                    let previousBlock = null;
+                    
+                    if (currentWrapper && currentWrapper.previousElementSibling) {
+                        previousBlock = currentWrapper.previousElementSibling.querySelector('.editor-block-item');
+                    }
 
-                if (currentWrapper) currentWrapper.remove();
+                    if (currentWrapper) currentWrapper.remove();
 
-                if (currentActive && currentActive.id === 'block-' + message.blockId && previousBlock) {
-                    previousBlock.focus();
-                    moveCursorToEnd(previousBlock);
-                }
+                    if (currentActive && currentActive.id === 'block-' + message.blockId && previousBlock) {
+                        previousBlock.focus();
+                        moveCursorToEnd(previousBlock);
+                    }
             }
             // [4] REORDER 수신
             else if (message.status === "REORDER") {
@@ -143,6 +148,27 @@ export function connectWebSocket(docId) {
             }
         });
 
+        stompClient.subscribe('/topic/workspaces/' + workspaceId, function(response){
+            const message = JSON.parse(response.body);
+            
+            if (message.status === "DELETE" && !message.blockId) {
+                console.log("📄 워크스페이스 삭제 신호 수신:", message.documentId);
+                
+                // 사이드바에서 제거
+                const sidebarTitles = document.querySelectorAll('.sidebar-doc-title');
+                sidebarTitles.forEach(el => {
+                    if (String(el.getAttribute('data-doc-id')) === String(message.documentId)) {
+                        el.closest('li').remove();
+                    }
+                });
+
+                // 보고 있던 문서가 삭제된 경우 이동
+                if (currentDocId == message.documentId) {
+                    alert("문서가 삭제되었습니다.");
+                    window.location.href = '/workspaces/' + workspaceId + '/documents';
+                }
+            }
+        });
         // 타 부속 모듈들의 이벤트 리스너 한 번에 시동 걸기
         initBlockTypingEvent(docId);
         initDragAndDrop(docId); 

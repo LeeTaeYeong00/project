@@ -56,9 +56,19 @@ public class DocumentWebSocketController {
                     
                 case "DELETE":
                     log.info("🔴 [SWITCH] DELETE 케이스 진입 성공!");
-                    BlockMessageDTO deletedMessage = blockService.deleteBlcok(message);
-                    messagingTemplate.convertAndSend("/topic/documents/" + documentId, deletedMessage);
-                    log.info("📢 [DELETE] 블록 삭제 브로드캐스팅 완료! BlockID: {}", deletedMessage.getBlockId());
+                    
+                    if(message.getBlockId() != null){
+                        BlockMessageDTO deletedMessage = blockService.deleteBlcok(message);
+                        messagingTemplate.convertAndSend("/topic/documents/" + documentId, deletedMessage);
+                        log.info("📢 [DELETE] 블록 삭제 브로드캐스팅 완료! BlockID: {}", deletedMessage.getBlockId());
+                    } else {
+                        Long workspaceId = documentService.getWorkspaceIdByDocumentId(documentId);
+                        documentService.deleteDocument(message.getDocumentId());
+                        messagingTemplate.convertAndSend("/topic/workspaces/" + workspaceId, message);
+                        log.info("📢 [DELETE] 문서 삭제 브로드캐스팅 완료! DocumentID: {}", message);
+                    }
+                    
+                    
                     break;
                 
                 // 💡 [추가] 드래그 앤 드롭 순서 변경 케이스 처리
