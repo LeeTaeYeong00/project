@@ -85,6 +85,16 @@ public class WorkspaceController {
         return "redirect:/workspaces";
     }
 
+    @PostMapping("/{workspaceId}/leave")
+    public String leaveWorkspace(@PathVariable("workspaceId") Long workspaceId,
+                                @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+
+        User loginUser = customUserDetails.getUser();
+        workspaceService.leaveWorkspace(workspaceId, loginUser);
+
+        return "redirect:/workspaces";
+    }
+
     // ==========================================
     // ✨ [추가] 초대 코드 관련 API (비동기 처리용)
     // ==========================================
@@ -148,6 +158,60 @@ public class WorkspaceController {
                     "success", false,
                     "message", e.getMessage()
             ));
+        }
+    }
+
+    // ==========================================
+    // ✨ [추가] 멤버 관리 API (OWNER 전용)
+    // ==========================================
+
+    @GetMapping("/{workspaceId}/members")
+    @ResponseBody
+    public ResponseEntity<?> getMembers(@PathVariable("workspaceId") Long workspaceId,
+                                        @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        try {
+            List<WorkspaceMember> members = workspaceService.getMembers(workspaceId, customUserDetails.getUser());
+
+            List<Map<String, Object>> result = members.stream().map(m -> {
+                Map<String, Object> map = new java.util.HashMap<>();
+                map.put("memberId", m.getMemberId());
+                map.put("name", m.getUser().getName());
+                map.put("username", m.getUser().getUsername());
+                map.put("role", m.getRole().name());
+                return map;
+            }).collect(java.util.stream.Collectors.toList());
+
+            return ResponseEntity.ok(Map.of("success", true, "members", result));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{workspaceId}/members/{memberId}/kick")
+    @ResponseBody
+    public ResponseEntity<?> kickMember(@PathVariable("workspaceId") Long workspaceId,
+                                        @PathVariable("memberId") Long memberId,
+                                        @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        try {
+            workspaceService.kickMember(workspaceId, memberId, customUserDetails.getUser());
+            return ResponseEntity.ok(Map.of("success", true, "message", "멤버를 퇴출했습니다."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{workspaceId}/members/{memberId}/role")
+    @ResponseBody
+    public ResponseEntity<?> changeMemberRole(@PathVariable("workspaceId") Long workspaceId,
+                                            @PathVariable("memberId") Long memberId,
+                                            @RequestBody Map<String, String> body,
+                                            @AuthenticationPrincipal CustomUserDetails customUserDetails) {
+        try {
+            WorkspaceRole newRole = WorkspaceRole.valueOf(body.get("role"));
+            workspaceService.changeMemberRole(workspaceId, memberId, newRole, customUserDetails.getUser());
+            return ResponseEntity.ok(Map.of("success", true, "message", "권한이 변경되었습니다."));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
 }

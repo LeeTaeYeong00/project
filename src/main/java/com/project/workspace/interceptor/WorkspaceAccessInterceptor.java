@@ -26,8 +26,6 @@ public class WorkspaceAccessInterceptor implements HandlerInterceptor {
 
         Long workspaceId = extractWorkspaceId(request);
         if (workspaceId == null) {
-            // /workspaces, /workspaces/create, /workspaces/join 처럼
-            // 특정 workspaceId를 대상으로 하지 않는 경로는 통과
             return true;
         }
 
@@ -42,8 +40,11 @@ public class WorkspaceAccessInterceptor implements HandlerInterceptor {
                 .findByWorkspace_WorkspaceIdAndUser_UserId(workspaceId, userId)
                 .orElseThrow(() -> new AccessDeniedException("해당 워크스페이스에 대한 접근 권한이 없습니다."));
 
-        // GET(조회)이 아닌 요청은 VISITOR는 차단, MEMBER 이상만 허용
-        if (!"GET".equalsIgnoreCase(request.getMethod()) && member.getRole() == WorkspaceRole.VISITOR) {
+        // ✨ "나가기"는 자기 자신의 멤버십 정리 행위 - role 상관없이 항상 허용
+        String uri = request.getRequestURI();
+        boolean isLeaveAction = uri.endsWith("/leave");
+
+        if (!isLeaveAction && !"GET".equalsIgnoreCase(request.getMethod()) && member.getRole() == WorkspaceRole.VISITOR) {
             throw new AccessDeniedException("읽기 전용 권한입니다. 편집 권한이 없습니다.");
         }
 

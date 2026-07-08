@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.project.document.entity.Document;
 import com.project.user.entity.User;
 import com.project.workspace.enumtype.WorkspaceRole;
 
@@ -46,6 +47,9 @@ public class Workspace {
 
     @OneToMany(mappedBy = "workspace", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<WorkspaceMember> members = new ArrayList<>();
+
+    @OneToMany(mappedBy = "workspace", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    private List<Document> documents;
 
     @Column(unique = true)
     private String inviteCode;

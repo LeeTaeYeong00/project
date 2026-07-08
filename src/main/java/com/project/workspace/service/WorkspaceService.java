@@ -126,4 +126,76 @@ public class WorkspaceService {
         return workspaceMemberRepository.findByWorkspace_WorkspaceIdAndUser_UserId(workspaceId, userId)
                                         .map(member -> member.getRole() == WorkspaceRole.OWNER || member.getRole() == WorkspaceRole.MEMBER).orElse(false);
     }
+
+    @Transactional
+    public void leaveWorkspace(Long workspaceId, User loginUser) {
+        WorkspaceMember member = workspaceMemberRepository
+                .findByWorkspace_WorkspaceIdAndUser_UserId(workspaceId, loginUser.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("해당 워크스페이스 멤버가 아닙니다."));
+
+        if (member.getRole() == WorkspaceRole.OWNER) {
+            throw new IllegalStateException("소유자는 워크스페이스를 나갈 수 없습니다. 워크스페이스 삭제를 이용해주세요.");
+        }
+
+        workspaceMemberRepository.delete(member);
+    }
+
+    // ==========================================
+    // ✨ [추가] 멤버 관리 (OWNER 전용)
+    // ==========================================
+
+    @Transactional(readOnly = true)
+    public List<WorkspaceMember> getMembers(Long workspaceId, User loginUser) {
+        validateOwner(workspaceId, loginUser.getUserId());
+        return workspaceMemberRepository.findByWorkspace_WorkspaceId(workspaceId);
+    }
+
+    @Transactional
+    public void kickMember(Long workspaceId, Long memberId, User loginUser) {
+        validateOwner(workspaceId, loginUser.getUserId());
+
+        WorkspaceMember target = workspaceMemberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 멤버입니다."));
+
+        if (!target.getWorkspace().getWorkspaceId().equals(workspaceId)) {
+            throw new IllegalArgumentException("잘못된 요청입니다.");
+        }
+        if (target.getRole() == WorkspaceRole.OWNER) {
+            throw new IllegalStateException("소유자는 퇴출할 수 없습니다.");
+        }
+
+        workspaceMemberRepository.delete(target);
+    }
+
+    @Transactional
+    public void changeMemberRole(Long workspaceId, Long memberId, WorkspaceRole newRole, User loginUser) {
+        validateOwner(workspaceId, loginUser.getUserId());
+
+        if (newRole == WorkspaceRole.OWNER) {
+            throw new IllegalArgumentException("소유자 권한은 위임할 수 없습니다.");
+        }
+
+        WorkspaceMember target = workspaceMemberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 멤버입니다."));
+
+        if (!target.getWorkspace().getWorkspaceId().equals(workspaceId)) {
+            throw new IllegalArgumentException("잘못된 요청입니다.");
+        }
+        if (target.getRole() == WorkspaceRole.OWNER) {
+            throw new IllegalStateException("소유자의 권한은 변경할 수 없습니다.");
+        }
+
+        target.updateRole(newRole);
+    }
+
+    private void validateOwner(Long workspaceId, Long userId) {
+        WorkspaceMember member = workspaceMemberRepository
+                .findByWorkspace_WorkspaceIdAndUser_UserId(workspaceId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("워크스페이스 멤버가 아닙니다."));
+
+        if (member.getRole() != WorkspaceRole.OWNER) {
+            throw new IllegalStateException("소유자만 가능한 기능입니다.");
+        }
+}
+
 }

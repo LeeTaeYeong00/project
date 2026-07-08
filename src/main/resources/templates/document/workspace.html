@@ -20,6 +20,19 @@
             <span style="font-size: 16px;">🏠</span>
             <span>홈</span>
         </a>
+
+        <!-- ✨ 워크스페이스 정보 바 -->
+        <div class="workspace-header">
+            <div class="workspace-title" th:text="${workspaceName}">워크스페이스 이름</div>
+            <div class="workspace-user-row">
+                <span class="user-badge">
+                    <span th:text="${myName}">유저</span>
+                    <span class="role-chip" th:classappend="${myRole}" th:text="${myRole}">ROLE</span>
+                </span>
+                <button th:if="${isOwner}" class="member-manage-btn" onclick="openMemberModal()">멤버 관리</button>
+            </div>
+        </div>
+
         <h3>새 문서</h3>
         <div class="create-form" th:unless="${isVisitor}">
             <form th:action="@{/workspaces/{wsId}/documents/create(wsId=${workspaceId})}" method="post">
@@ -46,8 +59,8 @@
                     <span th:unless="${isVisitor}" class="doc-menu-btn" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); toggleMenu(event, this)">⋮</span>
                                     
                     <div class="doc-menu-popup" th:id="'menu-' + ${doc.documentId}" style="display:none;">
-                        <span class="menu-item" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); prepareRename(this)">이름 변경</span>
-                        <span class="menu-item" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); deleteDocFromSidebar(this)">삭제</span>
+                        <span class="menu-item" th:unless="${isVisitor}" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); prepareRename(this)">이름 변경</span>
+                        <span class="menu-item" th:if="${isOwner}" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); deleteDocFromSidebar(this)">삭제</span>
                     </div>
                 </a>
             </li>
@@ -118,7 +131,7 @@
                         class="editor-block-item"
                         th:classappend="${#strings.toLowerCase(block.blockType)}"
                         th:text="${block.content}"
-                        placeholder="읽기 전용 권환입니다."></div>
+                        placeholder="명령어 사용은 '/' 입력"></div>
                 </div>
             </div>
             
@@ -127,6 +140,91 @@
             </div>
         </div>
     </div>
+
+    <div class="modal-overlay" id="memberModal">
+        <div class="modal-box">
+            <h3>워크스페이스 멤버 관리</h3>
+            <div id="memberList"></div>
+            <button class="modal-close-btn" onclick="closeMemberModal()">닫기</button>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        const currentWorkspaceId = /*[[${workspaceId}]]*/ null;
+
+        function openMemberModal() {
+            fetch(`/workspaces/${currentWorkspaceId}/members`)
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert("❌ " + data.message);
+                        return;
+                    }
+                    renderMembers(data.members);
+                    document.getElementById('memberModal').style.display = 'flex';
+                })
+                .catch(() => alert("멤버 목록을 불러오지 못했습니다."));
+        }
+
+        function renderMembers(members) {
+            const container = document.getElementById('memberList');
+            container.innerHTML = '';
+
+            members.forEach(m => {
+                const row = document.createElement('div');
+                row.className = 'member-row';
+
+                const isOwner = m.role === 'OWNER';
+
+                row.innerHTML = `
+                    <div class="member-info">
+                        <strong>${m.name}</strong>
+                        <div>${m.username} · ${m.role}</div>
+                    </div>
+                    <div class="member-actions">
+                        ${isOwner ? '' : `
+                            <select onchange="changeRole(${m.memberId}, this.value)">
+                                <option value="MEMBER" ${m.role === 'MEMBER' ? 'selected' : ''}>MEMBER</option>
+                                <option value="VISITOR" ${m.role === 'VISITOR' ? 'selected' : ''}>VISITOR</option>
+                            </select>
+                            <button class="kick-btn" onclick="kickMember(${m.memberId})">퇴출</button>
+                        `}
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function kickMember(memberId) {
+            if (!confirm("정말 이 멤버를 퇴출하시겠습니까?")) return;
+
+            fetch(`/workspaces/${currentWorkspaceId}/members/${memberId}/kick`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) openMemberModal();
+                    else alert("❌ " + data.message);
+                });
+        }
+
+        function changeRole(memberId, newRole) {
+            fetch(`/workspaces/${currentWorkspaceId}/members/${memberId}/role`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert("❌ " + data.message);
+                        openMemberModal();
+                    }
+                });
+        }
+
+        function closeMemberModal() {
+            document.getElementById('memberModal').style.display = 'none';
+        }
+    </script>
 
     <!-- 모듈 초기화 메인 스크립트 -->
     <script type="module">

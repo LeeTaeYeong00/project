@@ -42,4 +42,8 @@ public class WorkspaceMember {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private WorkspaceRole role;
+    
+    public void updateRole(WorkspaceRole role){
+        this.role = role;
+    }
 }

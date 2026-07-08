@@ -393,3 +393,108 @@ body.menu-active .block-wrapper:hover {
     border: 1px solid #ccc;
     border-radius: 3px;
 }
+
+    .workspace-header {
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid #eee;
+    }
+    .workspace-title {
+        font-size: 15px;
+        font-weight: 700;
+        color: #2c2c2c;
+        margin-bottom: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .workspace-user-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .user-badge {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #555;
+    }
+    .role-chip {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 10px;
+        letter-spacing: 0.3px;
+    }
+    .role-chip.OWNER { background: #fff3cd; color: #9a7d0a; }
+    .role-chip.MEMBER { background: #e0edff; color: #2f6fdb; }
+    .role-chip.VISITOR { background: #ececec; color: #777; }
+    .member-manage-btn {
+        font-size: 12px;
+        padding: 5px 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fff;
+        color: #555;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .member-manage-btn:hover { background: #f5f5f5; }
+
+    /* 멤버 관리 모달 */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.35);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal-box {
+        background: white;
+        width: 380px;
+        max-height: 70vh;
+        overflow-y: auto;
+        border-radius: 10px;
+        padding: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .modal-box h3 { margin-top: 0; margin-bottom: 14px; font-size: 16px; }
+    .member-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .member-row:last-child { border-bottom: none; }
+    .member-info strong { font-size: 14px; }
+    .member-info div { font-size: 12px; color: #888; margin-top: 2px; }
+    .member-actions { display: flex; gap: 6px; align-items: center; }
+    .member-actions select {
+        font-size: 12px;
+        padding: 4px 6px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+    }
+    .kick-btn {
+        font-size: 12px;
+        background: #ff4d4d;
+        color: white;
+        border: none;
+        padding: 5px 9px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    .modal-close-btn {
+        margin-top: 16px;
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background: #fafafa;
+        cursor: pointer;
+    }
