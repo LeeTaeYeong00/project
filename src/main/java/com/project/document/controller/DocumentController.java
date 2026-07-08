@@ -49,6 +49,7 @@ public class DocumentController {
         model.addAttribute("isVisitor", "VISITOR".equals(roleStr));
         model.addAttribute("isOwner", "OWNER".equals(roleStr));
         model.addAttribute("myName", customUserDetails.getUser().getName());
+        model.addAttribute("myUserId", customUserDetails.getUser().getUserId());
 
         if (docId != null) {
             Document selectedDocument = documentService.getDocument(docId);

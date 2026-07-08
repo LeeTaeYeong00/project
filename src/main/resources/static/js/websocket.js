@@ -1,6 +1,7 @@
 import { initBlockTypingEvent, typingTimeout } from '/js/editor.js';
 import { initDragAndDrop } from '/js/dragdrop.js';
 import { moveCursorToStart, moveCursorToEnd } from '/js/utils.js';
+import { renderPresence, getEditorColor } from '/js/presence.js';
 
 export let stompClient = null;
 export let currentDocId = null;
@@ -146,6 +147,36 @@ export function connectWebSocket(docId) {
                     });
                 }
             }
+            // [5] EDIT_START 수신
+            else if (message.status === "EDIT_START") {
+                const myUserId = document.getElementById('workspace-info').dataset.userId;
+                if (String(message.editorId) === String(myUserId)) return; // 본인 편집은 표시 안 함
+
+                const targetBlock = document.getElementById('block-' + message.blockId);
+                const wrapper = targetBlock ? targetBlock.closest('.block-wrapper') : null;
+                if (!wrapper) return;
+
+                wrapper.classList.add('being-edited');
+                wrapper.style.setProperty('--editor-color', getEditorColor(message.editorId));
+
+                let label = wrapper.querySelector('.editing-label');
+                if (!label) {
+                    label = document.createElement('div');
+                    label.className = 'editing-label';
+                    wrapper.appendChild(label);
+                }
+                label.textContent = message.editorName + ' 편집중';
+            }
+            // [6] EDIT_END 수신
+            else if (message.status === "EDIT_END") {
+                const targetBlock = document.getElementById('block-' + message.blockId);
+                const wrapper = targetBlock ? targetBlock.closest('.block-wrapper') : null;
+                if (!wrapper) return;
+
+                wrapper.classList.remove('being-edited');
+                const label = wrapper.querySelector('.editing-label');
+                if (label) label.remove();
+            }
         });
 
         stompClient.subscribe('/topic/workspaces/' + workspaceId, function(response){
@@ -169,6 +200,12 @@ export function connectWebSocket(docId) {
                 }
             }
         });
+
+        stompClient.subscribe('/topic/workspaces/' + workspaceId + '/presence', function (response) {
+            const users = JSON.parse(response.body);
+            renderPresence(users);
+        });
+
         // 타 부속 모듈들의 이벤트 리스너 한 번에 시동 걸기
         initBlockTypingEvent(docId);
         initDragAndDrop(docId); 

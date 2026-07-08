@@ -83,6 +83,28 @@ public class WorkspaceChannelInterceptor implements ChannelInterceptor {
         return message;
     }
 
+    private Message<?> validatePresenceSubscribe(StompHeaderAccessor accessor, Message<?> message) {
+        String destination = accessor.getDestination();
+        if (destination == null || !destination.matches("^/topic/workspaces/\\d+/presence$")) {
+            return message; // presence 구독이 아니면 그냥 통과
+        }
+
+        Principal principal = accessor.getUser();
+        if (principal == null) {
+            throw new AccessDeniedException("로그인이 필요합니다.");
+        }
+
+        User user = userRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new AccessDeniedException("사용자 정보를 찾을 수 없습니다."));
+
+        Long workspaceId = Long.parseLong(destination.replaceAll("\\D+", ""));
+
+        workspaceMemberRepository.findByWorkspace_WorkspaceIdAndUser_UserId(workspaceId, user.getUserId())
+                .orElseThrow(() -> new AccessDeniedException("워크스페이스 멤버가 아닙니다."));
+
+        return message;
+    }
+
     private Long extractDocumentId(String destination) {
         if (destination == null) return null;
         String[] segments = destination.split("/");

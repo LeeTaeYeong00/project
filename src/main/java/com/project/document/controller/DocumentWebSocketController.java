@@ -1,6 +1,9 @@
 package com.project.document.controller;
 
+import java.security.Principal;
+
 import org.springframework.messaging.handler.annotation.DestinationVariable;
+import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
@@ -8,6 +11,9 @@ import org.springframework.stereotype.Controller;
 import com.project.block.dto.BlockMessageDTO;
 import com.project.block.service.BlockService;
 import com.project.document.service.DocumentService;
+import com.project.user.entity.User;
+import com.project.user.repository.UserRepository;
+import com.project.workspace.realtime.BlockEditingTracker;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,9 +26,11 @@ public class DocumentWebSocketController {
     private final DocumentService documentService;
     private final BlockService blockService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final UserRepository userRepository;
+    private final BlockEditingTracker editingTracker;
 
     @MessageMapping("/documents/{documentId}/typing")
-    public void handleBlockEvent(@DestinationVariable("documentId") Long documentId, BlockMessageDTO message){
+    public void handleBlockEvent(@DestinationVariable("documentId") Long documentId, BlockMessageDTO message, Principal principal, @Header("simpSessionId") String sessionId){
         // 🚀 수신 확인을 위한 거대한 로그 마커
         log.info("============== [웹소켓 신호 도착] ==============");
         log.info("문서 ID: {}, 상태(Status): {}, 블록타입: {}, 내용: {}", 
@@ -92,6 +100,23 @@ public class DocumentWebSocketController {
                     log.info("💾 [DB] 문서 제목 업데이트 완료!");
                     messagingTemplate.convertAndSend("/topic/documents/" + documentId, message);
                     break;
+                
+                case "EDIT_START": {
+                    User user = userRepository.findByUsername(principal.getName()).orElse(null);
+                    if(user != null && message.getBlockId() != null){
+                        editingTracker.startEditing(sessionId, documentId, message.getBlockId(), user.getUserId(), user.getName());
+                    }
+                    return;
+                }
+
+                case "EDIT_END": {
+                    User user = userRepository.findByUsername(principal.getName()).orElse(null);
+                    if (user != null && message.getBlockId() != null) {
+                        editingTracker.endEditing(sessionId, documentId, message.getBlockId(),
+                                user.getUserId(), user.getName());
+                    }
+                    return;
+                }
                 
                 default:
                     log.warn("❌ [SWITCH] 알 수 없는 상태값: {}", message.getStatus());

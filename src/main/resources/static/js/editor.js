@@ -415,12 +415,34 @@ export function initBlockTypingEvent(docId) {
         }
     });
 
+    editorContainer.addEventListener('focusin', function (event) {
+        const targetBlock = event.target;
+        if (!targetBlock.classList.contains('editor-block-item')) return;
+
+        const blockId = targetBlock.getAttribute('data-block-id');
+        if (stompClient && stompClient.connected && blockId) {
+            stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
+                status: "EDIT_START",
+                documentId: parseInt(docId),
+                blockId: parseInt(blockId)
+            }));
+        }
+    });
+
     // 3) 포커스 아웃 실시간 밀어넣기 및 슬래시 메뉴 청소
     editorContainer.addEventListener('focusout', function (event) {
         if (event.target.classList.contains('editor-block-item')) {
             flushPendingChanges(event.target);
-            // 포커스를 잃으면 슬래시 메뉴가 자연스럽게 닫히도록 지연 추가
             setTimeout(hideSlashMenu, 150);
+
+            const blockId = event.target.getAttribute('data-block-id');
+            if (stompClient && stompClient.connected && blockId) {
+                stompClient.send('/app/documents/' + docId + '/typing', {}, JSON.stringify({
+                    status: "EDIT_END",
+                    documentId: parseInt(docId),
+                    blockId: parseInt(blockId)
+                }));
+            }
         }
     });
 
@@ -430,8 +452,6 @@ export function initBlockTypingEvent(docId) {
             hideSlashMenu();
         }
     });
-
-
 }
 
     document.addEventListener('DOMContentLoaded', () => {

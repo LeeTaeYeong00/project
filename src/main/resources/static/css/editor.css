@@ -498,3 +498,58 @@ body.menu-active .block-wrapper:hover {
         background: #fafafa;
         cursor: pointer;
     }
+
+    .presence-panel {
+    position: fixed;
+    top: 16px;
+    right: 20px;
+    z-index: 1500;
+    background: #ffffff;
+    border: 1px solid #e2e2e0;
+    border-radius: 20px;
+    padding: 6px 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+}
+.presence-list { display: flex; }
+.presence-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #2383e2;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    border: 2px solid #fff;
+    margin-left: -8px;
+    position: relative;
+}
+.presence-avatar:first-child { margin-left: 0; }
+.presence-avatar.visitor { background: #b7b7b3; }
+.presence-avatar .tooltip {
+    visibility: hidden;
+    position: absolute;
+    top: 34px; left: 50%; transform: translateX(-50%);
+    background: #333; color: #fff;
+    font-size: 11px; padding: 3px 6px; border-radius: 4px;
+    white-space: nowrap;
+}
+.presence-avatar:hover .tooltip { visibility: visible; }
+
+.block-wrapper.being-edited .editor-block-item {
+    outline: 2px solid var(--editor-color, #2383e2);
+    outline-offset: 2px;
+    background-color: rgba(35,131,226,0.05);
+    border-radius: 4px;
+}
+.editing-label {
+    position: absolute;
+    top: -18px; left: 0;
+    font-size: 11px; font-weight: 600;
+    color: #fff;
+    background: var(--editor-color, #2383e2);
+    padding: 1px 6px;
+    border-radius: 4px 4px 4px 0;
+    white-space: nowrap;
+    pointer-events: none;
+}

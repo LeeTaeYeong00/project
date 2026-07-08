@@ -18,6 +18,8 @@ public class BlockMessageDTO {
     private BlockType blockType;
     private String content;
     private Integer sequenceOrder;
+    private Long editorId;
+    private String editorName;
 
     private List<BlockOrderInfo> orderedBlocks;
 

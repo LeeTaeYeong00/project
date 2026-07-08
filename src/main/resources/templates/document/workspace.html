@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
-    <div id="workspace-info" th:data-workspace-id="${workspaceId}" th:data-visitor="${isVisitor}" style="display:none;"></div>
+    <div id="workspace-info" th:data-workspace-id="${workspaceId}" th:data-visitor="${isVisitor}" th:data-user-id="${myUserId}" style="display:none;"></div>
     <!-- 왼쪽 사이드바 영역 -->
     <div class="sidebar" id="sidebar">
         <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
@@ -20,6 +20,11 @@
             <span style="font-size: 16px;">🏠</span>
             <span>홈</span>
         </a>
+
+        <!-- 접속 중인 유저 -->
+        <div id="presence-panel" class="presence-panel">
+            <div id="presence-list" class="presence-list"></div>
+        </div>
 
         <!-- ✨ 워크스페이스 정보 바 -->
         <div class="workspace-header">
