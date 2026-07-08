@@ -12,7 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
-    <div id="workspace-info" th:data-workspace-id="${workspaceId}" style="display:none;"></div>
+    <div id="workspace-info" th:data-workspace-id="${workspaceId}" th:data-visitor="${isVisitor}" style="display:none;"></div>
     <!-- 왼쪽 사이드바 영역 -->
     <div class="sidebar" id="sidebar">
         <button class="toggle-btn" id="toggleBtn" onclick="toggleSidebar()">◀</button>
@@ -21,12 +21,15 @@
             <span>홈</span>
         </a>
         <h3>새 문서</h3>
-        <div class="create-form">
+        <div class="create-form" th:unless="${isVisitor}">
             <form th:action="@{/workspaces/{wsId}/documents/create(wsId=${workspaceId})}" method="post">
                 <input type="text" name="title" class="create-input" placeholder="새 문서 제목..." required>
                 <button type="submit" class="create-btn">+ 문서 추가</button>
             </form>
         </div>
+        <p th:if="${isVisitor}" style="padding: 8px; font-size: 12px; color: #999;">
+        🔒 읽기 전용 권한입니다
+        </p>
 
         <h3>문서 목록</h3>
         <ul class="doc-list">
@@ -40,9 +43,8 @@
                     <span class="doc-icon">📄</span>
                     <span class="sidebar-doc-title" th:data-doc-id="${doc.documentId}" th:text="${doc.title}">문서 제목</span>
                     
-                    <!-- 💡 추가: ... 버튼 -->
-                    <span class="doc-menu-btn" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); toggleMenu(event, this)">⋮</span>
-                                    <!-- 💡 추가: 메뉴 팝업 (기본 숨김) -->
+                    <span th:unless="${isVisitor}" class="doc-menu-btn" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); toggleMenu(event, this)">⋮</span>
+                                    
                     <div class="doc-menu-popup" th:id="'menu-' + ${doc.documentId}" style="display:none;">
                         <span class="menu-item" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); prepareRename(this)">이름 변경</span>
                         <span class="menu-item" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); event.stopPropagation(); deleteDocFromSidebar(this)">삭제</span>
@@ -69,7 +71,7 @@
                     style="display: none; font-size: 2em; font-weight: bold; border: 1px solid #ccc; padding: 5px;">
                 
                 <!-- 수정 버튼 (아이콘 디자인) -->
-                <button id="edit-title-btn" class="edit-btn" th:data-doc-id="${selectedDocument.documentId}">✏️</button>
+                <button th:unless="${isVisitor}" id="edit-title-btn" class="edit-btn" th:data-doc-id="${selectedDocument.documentId}">✏️</button>
             </div>
             <div class="editor-meta">
                 최종 수정: <span th:text="${#temporals.format(selectedDocument.updatedAt, 'yyyy-MM-dd HH:mm:ss')}">수정일</span>
@@ -96,7 +98,8 @@
                     </div>
 
                     <!-- ✍️ 실제 에디터 블록 영역 (기존 그대로 유지) -->
-                    <div th:id="'block-' + ${block.blockId}"
+                    <div th:if="${!isVisitor}"
+                        th:id="'block-' + ${block.blockId}"
                         th:data-block-id="${block.blockId}"
                         th:data-block-type="${block.blockType}"
                         th:data-sequence-order="${block.sequenceOrder}"
@@ -105,7 +108,17 @@
                         th:classappend="${#strings.toLowerCase(block.blockType)}"
                         th:text="${block.content}"
                         placeholder="명령어 사용은 '/' 입력"></div>
-                        
+
+                    <div th:if="${isVisitor}"
+                        th:id="'block-' + ${block.blockId}"
+                        th:data-block-id="${block.blockId}"
+                        th:data-block-type="${block.blockType}"
+                        th:data-sequence-order="${block.sequenceOrder}"
+                        contenteditable="false"
+                        class="editor-block-item"
+                        th:classappend="${#strings.toLowerCase(block.blockType)}"
+                        th:text="${block.content}"
+                        placeholder="읽기 전용 권환입니다."></div>
                 </div>
             </div>
             

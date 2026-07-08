@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>접근 권한 없음</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding-top: 100px; color: #333; }
+        h1 { font-size: 60px; margin-bottom: 10px; }
+        p { color: #666; margin-bottom: 30px; }
+        a { padding: 10px 20px; background: #4da6ff; color: white; text-decoration: none; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>403</h1>
+    <p th:text="${message}">접근 권한이 없습니다.</p>
+    <a th:href="@{/workspaces}">워크스페이스 목록으로 돌아가기</a>
+</body>
+</html>

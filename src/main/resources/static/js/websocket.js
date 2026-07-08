@@ -173,7 +173,19 @@ export function connectWebSocket(docId) {
         initBlockTypingEvent(docId);
         initDragAndDrop(docId); 
 
-    }, function(error){
-        console.error("웹소켓 연결 실패:", error);
+    }, function (error) {
+        console.error("STOMP 에러:", error);
+
+        if (errorAlertShown) return; // 중복 방지
+        errorAlertShown = true;
+
+        let message = "요청이 거부되었습니다.";
+        if (error && error.headers && error.headers.message) {
+            message = error.headers.message;
+        }
+
+        alert("⚠️ " + message);
+
+        setTimeout(() => { errorAlertShown = false; }, 1000);
     });
 }

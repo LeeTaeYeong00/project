@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.project.document.entity.Document;
 import com.project.document.service.DocumentService;
 
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
 @Controller
@@ -25,14 +26,18 @@ public class DocumentController {
     @GetMapping
     public String documentWorkspace(@PathVariable("workspaceId") Long workspaceId,
                                     @RequestParam(value = "docId", required = false) Long docId,
+                                    HttpServletRequest request,
                                     Model model) {
         
-        // 왼쪽 사이드바에 뿌려줄 전체 문서 목록 조회
         List<Document> documents = documentService.getDocumentsByWorkspace(workspaceId);
         model.addAttribute("documents", documents);
         model.addAttribute("workspaceId", workspaceId);
 
-        // 특정 문서를 클릭해서 docId 파라미터가 들어왔다면 오른쪽 메인에 넘겨줌
+        // ✨ enum 대신 boolean으로 미리 계산
+        Object roleAttr = request.getAttribute("workspaceRole");
+        boolean isVisitor = (roleAttr != null && "VISITOR".equals(roleAttr.toString()));
+        model.addAttribute("isVisitor", isVisitor);
+
         if (docId != null) {
             Document selectedDocument = documentService.getDocument(docId);
             model.addAttribute("selectedDocument", selectedDocument);
