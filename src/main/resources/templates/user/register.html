@@ -1,127 +1,109 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
+<head>
     <meta charset="UTF-8">
     <title>회원가입</title>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <style>
-        .error-msg { color: red; font-size: 0.9em; }
-        .success-msg { color: green; font-size: 0.9em; }
-        .form-group { margin-bottom: 15px; }
-    </style>
 </head>
-<body>
-    <h2>회원가입</h2>
-    <div th:if="${errorMessage}" style="color: red; font-weight: bold; margin-bottom: 15px;">
-        <p th:text="${errorMessage}"></p>
+<body class="auth-body">
+    <div class="auth-card">
+        <div class="auth-logo">📝 노션 스타일 협업 공간</div>
+        <div class="auth-title">회원가입</div>
+        <div class="auth-subtitle">몇 가지 정보만 입력하면 바로 시작할 수 있어요</div>
+
+        <div th:if="${errorMessage}" class="auth-alert error" th:text="${errorMessage}"></div>
+
+        <form th:action="@{/users/register}" th:object="${userDTO}" method="post" id="registerForm">
+            <div class="auth-form-group">
+                <label class="auth-label" for="username">아이디 (ID)</label>
+                <div class="auth-inline-check">
+                    <input type="text" class="auth-input" th:field="*{username}" id="username" required>
+                    <button type="button" class="auth-check-btn" id="btnCheckUsername">중복확인</button>
+                </div>
+                <div id="usernameMsg" class="auth-hint"></div>
+            </div>
+
+            <div class="auth-form-group">
+                <label class="auth-label" for="password">비밀번호</label>
+                <input type="password" class="auth-input" th:field="*{password}" id="password" required>
+            </div>
+
+            <div class="auth-form-group">
+                <label class="auth-label" for="name">이름</label>
+                <input type="text" class="auth-input" th:field="*{name}" id="name" required>
+            </div>
+
+            <div class="auth-form-group">
+                <label class="auth-label" for="email">이메일</label>
+                <div class="auth-inline-check">
+                    <input type="email" class="auth-input" th:field="*{email}" id="email" required>
+                    <button type="button" class="auth-check-btn" id="btnCheckEmail">중복확인</button>
+                </div>
+                <div id="emailMsg" class="auth-hint"></div>
+            </div>
+
+            <button type="submit" id="btnSubmit" class="auth-submit-btn" disabled>가입하기</button>
+        </form>
+
+        <div class="auth-footer">
+            이미 계정이 있으신가요? <a th:href="@{/users/login}">로그인하러 가기</a>
+        </div>
     </div>
-    
-    <form th:action="@{/users/register}" th:object="${userDTO}" method="post" id="registerForm">
-        <div class="form-group">
-            <label for="username">아이디 (ID)</label><br>
-            <input type="text" th:field="*{username}" id="username" required>
-            <button type="button" id="btnCheckUsername">아이디 중복확인</button>
-            <div id="usernameMsg"></div>
-        </div>
-
-        <div class="form-group">
-            <label for="password">비밀번호</label><br>
-            <input type="password" th:field="*{password}" id="password" required>
-        </div>
-
-        <div class="form-group">
-            <label for="name">이름</label><br>
-            <input type="text" th:field="*{name}" id="name" required>
-        </div>
-
-        <div class="form-group">
-            <label for="email">이메일</label><br>
-            <input type="email" th:field="*{email}" id="email" required>
-            <button type="button" id="btnCheckEmail">이메일 중복확인</button>
-            <div id="emailMsg"></div>
-        </div>
-
-        <button type="submit" id="btnSubmit" disabled style="padding: 10px 20px;">가입하기</button>
-    </form>
 
     <script>
         let isUsername = false;
         let isEmail = false;
 
         function toggleSubmitButton(){
-            if(isUsername && isEmail){
-                $('#btnSubmit').removeAttr('disabled');
-            } else {
-                $('#btnSubmit').attr('disabled', 'disabled');
-            }
+            if(isUsername && isEmail) $('#btnSubmit').removeAttr('disabled');
+            else $('#btnSubmit').attr('disabled', 'disabled');
         }
 
         $(document).ready(function(){
             $('#btnCheckUsername').click(function(){
                 const username = $('#username').val().trim();
-                if(username === ""){
-                    alert("아이디를 입력하세요");
-                    return;
-                }
+                if(username === ""){ alert("아이디를 입력하세요"); return; }
 
                 $.ajax({
-                    url : '/users/check-username',
-                    type : 'GET',
-                    data : {username : username},
+                    url : '/users/check-username', type : 'GET', data : {username : username},
                     success : function(isExist){
                         if(isExist){
-                            $('#usernameMsg').html('<span class="error-msg"> 사용 중인 아이디입니다.</span>')
+                            $('#usernameMsg').removeClass('success').addClass('error').text('이미 사용 중인 아이디입니다.');
                             isUsername = false;
                         } else {
-                            $('#usernameMsg').html('<span class="success-msg"> 사용 가능한 아이디입니다.</span>')
+                            $('#usernameMsg').removeClass('error').addClass('success').text('사용 가능한 아이디입니다.');
                             isUsername = true;
                         }
                         toggleSubmitButton();
                     },
-                    error : function(){
-                        alert("오류가 발생했습니다. 다시 시도해주세요.");
-                    }
+                    error : function(){ alert("오류가 발생했습니다. 다시 시도해주세요."); }
                 });
             });
 
             $('#btnCheckEmail').click(function(){
                 const email = $('#email').val().trim();
-                if(email === ""){
-                    alert("이메일을 입력하세요");
-                    return;
-                }
+                if(email === ""){ alert("이메일을 입력하세요"); return; }
 
                 $.ajax({
-                    url : '/users/check-email',
-                    type : 'GET',
-                    data : {email : email},
+                    url : '/users/check-email', type : 'GET', data : {email : email},
                     success : function(isExist){
                         if(isExist){
-                            $('#emailMsg').html('<span class="error-msg"> 사용 중인 이메일입니다.</span>')
+                            $('#emailMsg').removeClass('success').addClass('error').text('이미 사용 중인 이메일입니다.');
                             isEmail = false;
                         } else {
-                            $('#emailMsg').html('<span class="success-msg"> 사용 가능한 이메일입니다.</span>')
+                            $('#emailMsg').removeClass('error').addClass('success').text('사용 가능한 이메일입니다.');
                             isEmail = true;
                         }
                         toggleSubmitButton();
                     },
-                    error : function(){
-                        alert("오류가 발생했습니다. 다시 시도해주세요.");
-                    }
+                    error : function(){ alert("오류가 발생했습니다. 다시 시도해주세요."); }
                 });
             });
 
-            $('#username').on('input', function(){
-                isUsername = false;
-                $('#usernameMsg').empty();
-                toggleSubmitButton();
-            });
-
-            $('#email').on('input', function(){
-                isEmail = false;
-                $('#emailMsg').empty();
-                toggleSubmitButton();
-            });
+            $('#username').on('input', function(){ isUsername = false; $('#usernameMsg').text(''); toggleSubmitButton(); });
+            $('#email').on('input', function(){ isEmail = false; $('#emailMsg').text(''); toggleSubmitButton(); });
         });
     </script>
 </body>
+</html>

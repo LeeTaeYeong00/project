@@ -60,7 +60,8 @@
                 class="doc-item">
                     <span class="doc-icon">📄</span>
                     <span class="sidebar-doc-title" th:data-doc-id="${doc.documentId}" th:text="${doc.title}">문서 제목</span>
-                    
+                    <span class="doc-viewers" th:data-doc-id="${doc.documentId}"></span>
+
                     <span th:unless="${isVisitor}" class="doc-menu-btn" th:data-doc-id="${doc.documentId}" onclick="event.preventDefault(); toggleMenu(event, this)">⋮</span>
                                     
                     <div class="doc-menu-popup" th:id="'menu-' + ${doc.documentId}" style="display:none;">
@@ -140,8 +141,8 @@
                 </div>
             </div>
             
-            <div class="save-bar" style="color: #91908c; font-size: 13px; margin-top: 20px;">
-                🟢 실시간으로 안전하게 동기화 중...
+            <div class="save-bar" id="sync-status" style="color: #91908c; font-size: 13px; margin-top: 20px;">
+                🟢 연결됨
             </div>
         </div>
     </div>

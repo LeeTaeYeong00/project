@@ -6,8 +6,25 @@ import { renderPresence, getEditorColor } from '/js/presence.js';
 export let stompClient = null;
 export let currentDocId = null;
 
+function setSyncStatus(state){
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+
+    if (state === 'connected') {
+        el.textContent = '🟢 연결됨';
+    } else if (state === 'disconnected') {
+        el.textContent = '🔴 연결이 끊겼습니다. 새로고침 해주세요.';
+    } else if (state === 'synced') {
+        const time = new Date().toLocaleTimeString('ko-KR', { hour12: false });
+        el.textContent = `🟢 마지막 동기화: ${time}`;
+    }
+}
+
+
 // ⚡ 웹소켓 서버 연결 및 구독 설정
 export function connectWebSocket(docId) {
+    if(docId === "null" || docId === "undefined") docId = null;
+
     currentDocId = docId;
     const workspaceId = document.getElementById('workspace-info').dataset.workspaceId;
     const socket = new SockJS('/ws-connect');
@@ -15,9 +32,13 @@ export function connectWebSocket(docId) {
 
     stompClient.connect({}, function (frame) {
         console.log("웹소켓 연결 성공:", frame);
-        
+        setSyncStatus('connected');
         stompClient.subscribe('/topic/documents/' + docId, function (response) {
             const message = JSON.parse(response.body);
+
+            if(message.status !== 'EDIT_START' && message.status !== 'EDIT_END'){
+                setSyncStatus('synced');
+            }
 
             if (message.status === "RENAME") {
                 console.log("📥 [RENAME 수신] 문서ID:", message.documentId, "내용:", message.content);
@@ -204,13 +225,14 @@ export function connectWebSocket(docId) {
         stompClient.subscribe('/topic/workspaces/' + workspaceId + '/presence', function (response) {
             const users = JSON.parse(response.body);
             renderPresence(users);
-        });
+        }, { documentId: docId ?? ' '});
 
         // 타 부속 모듈들의 이벤트 리스너 한 번에 시동 걸기
         initBlockTypingEvent(docId);
         initDragAndDrop(docId); 
 
     }, function (error) {
+        setSyncStatus('disconnected');
         console.error("STOMP 에러:", error);
 
         if (errorAlertShown) return; // 중복 방지

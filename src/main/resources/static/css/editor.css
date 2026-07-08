@@ -553,3 +553,18 @@ body.menu-active .block-wrapper:hover {
     white-space: nowrap;
     pointer-events: none;
 }
+
+.doc-viewers {
+    display: flex;
+    margin-left: 6px;
+    gap: 2px;
+}
+.doc-viewer-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    color: white;
+    font-size: 9px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}

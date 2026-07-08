@@ -45,7 +45,14 @@ public class WorkspaceRealtimeEventListener {
                 .orElse(null);
         if (member == null) return;
 
-        presenceService.join(accessor.getSessionId(), workspaceId, user.getUserId(), user.getName(), member.getRole().name());
+        // 👇 구독 시 클라이언트가 실어 보낸 documentId 헤더를 읽음
+        Long documentId = null;
+        String docHeader = accessor.getFirstNativeHeader("documentId");
+        if (docHeader != null && !docHeader.isBlank() && !"null".equals(docHeader)) {
+            try { documentId = Long.parseLong(docHeader); } catch (NumberFormatException ignored) {}
+        }
+
+        presenceService.join(accessor.getSessionId(), workspaceId, documentId, user.getUserId(), user.getName(), member.getRole().name());
     }
 
     @EventListener
